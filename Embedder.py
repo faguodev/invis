@@ -1,14 +1,13 @@
 #!/usr/bin/python
 import numpy as np
 from copy import copy
-from matplotlib.mlab import PCA
 from sklearn import manifold
 from sklearn import decomposition
 from collections import defaultdict
 # from scipy.spatial import distance
-from PyQt4.QtCore import *
-from PyQt4.QtGui import *
-from PyQt4.Qt import *
+from PyQt5.QtCore import *
+from PyQt5.QtGui import *
+from PyQt5.QtWidgets import *
 # explicitly imported "hidden imports" for pyinstaller
 #from sklearn.utils import weight_vector, lgamma
 from sklearn.metrics.pairwise import euclidean_distances, pairwise_distances

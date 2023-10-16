@@ -5,7 +5,7 @@ Created on Jan 6, 2014
 '''
 
 import numpy as np
-import comparable as comp
+from . import comparable as comp
 import warnings
 
 

@@ -16,7 +16,7 @@ import numpy as np
 import multiprocessing as mproc
 import logging
 from logging import handlers
-import graph
+from . import graph
 #import pickle
 
 

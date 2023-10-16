@@ -1,12 +1,13 @@
 #!/usr/bin/python
 import numpy as np
 import matplotlib.pyplot as pl
-from PyQt4.QtCore import *
-from PyQt4.QtGui import *
+from PyQt5.QtCore import *
+from PyQt5.QtGui import *
+from PyQt5.QtWidgets import *
 import matplotlib
 import dill
 # from matplotlib.offsetbox import OffsetImage, AnnotationBbox
-from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 from matplotlib.widgets import Lasso
 from scipy.spatial import distance
@@ -89,7 +90,7 @@ class MainWindow(QMainWindow):
         self.path = None
         self.center_ind = None
         self.tag_elements = []
-        self.control_point_color = {pl.cm.RdYlGn:'b', pl.cm.spectral:'k', pl.cm.Blues:'m', pl.cm.hot:'b'}
+        self.control_point_color = {pl.cm.RdYlGn:'b', pl.cm.Spectral:'k', pl.cm.Blues:'m', pl.cm.hot:'b'}
 
         self.setWindowTitle('InVis')
         self.series_list_model = QStandardItemModel()
@@ -981,7 +982,7 @@ class MainWindow(QMainWindow):
     def set_color_spectral(self):
         """ Set the coloring of the embedded data records to spectral """
         if self.data != None:
-            self.color_scheme = pl.cm.spectral
+            self.color_scheme = pl.cm.Spectral
             self.update()
 
 

@@ -12,9 +12,9 @@ sys.path.append('./../constraints')
 sys.path.append('./../optimization')
 sys.path.append('./../common')
 
-import cons_interpreter as ci
-import lcqus_solver as slv
-import utils
+from . import cons_interpreter as ci
+from . import lcqus_solver as slv
+from . import utils
 
 
 class embedder(object):

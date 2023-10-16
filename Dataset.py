@@ -10,9 +10,9 @@ except:
         pass
 from unidecode import unidecode
 
-from PyQt4.QtCore import *
-from PyQt4.QtGui import *
-from PyQt4.Qt import *
+from PyQt5.QtCore import *
+from PyQt5.QtGui import *
+from PyQt5.QtWidgets import *
 from statsmodels.tsa.ar_model import AR
 from statsmodels.tsa.arima_model import ARMA
 from utils import suppress_stdout_stderr
