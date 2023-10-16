@@ -493,13 +493,13 @@ if __name__ == "__main__":
             pattern = str(i[0])[12:-3].replace("', '", ' and ')
             out += "," + pattern
         out += ",label"
-        print out
+        print(out)
 
         for i,p in enumerate(patternized_data):
             name = data.instance_names[i]
             pattern_vec = str(p)[2:-1].replace("  ", ',').replace(".", '.0').replace('\n', '')
             label = str(data.original_data[i][-1])
-            print "%s,%s,%s" %(name,pattern_vec,label)
+            print("%s,%s,%s" %(name,pattern_vec,label))
 
 
     elif mode == 'b':

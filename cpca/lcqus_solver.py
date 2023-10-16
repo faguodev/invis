@@ -53,19 +53,19 @@ def __is_symmetric(W):
 '''
 def __validate_parameters(W, r, b, K, L, y):
     if not __is_symmetric(W) or (None != K and not __is_symmetric(K)):
-        raise ValueError, 'The matrix W and the matrix K, if passed, must be symmetric!'
+        raise ValueError('The matrix W and the matrix K, if passed, must be symmetric!')
     
     if None != b and b.shape[0] != W.shape[0]:
-        raise ValueError, 'The b vector is of inappropriate dimension. Its expected dimension is ' + str(W.shape[0]) + '!'
+        raise ValueError('The b vector is of inappropriate dimension. Its expected dimension is ' + str(W.shape[0]) + '!')
     
     if None != L and (L.shape[1] != W.shape[1] or L.shape[0] >= W.shape[0]):
-        raise ValueError, 'The constraint matrix L is of inappropriate dimension. Its expected dimension is m x ' + str(W.shape[1]) + ' with m < ' + str(W.shape[0]) + '!'
+        raise ValueError('The constraint matrix L is of inappropriate dimension. Its expected dimension is m x ' + str(W.shape[1]) + ' with m < ' + str(W.shape[0]) + '!')
     
     if None != y and (L == None or y.shape[0] != L.shape[0]):
-        raise ValueError, 'The constraint value vector is of invalid dimension or it is specified without the constraint matrix L!'
+        raise ValueError('The constraint value vector is of invalid dimension or it is specified without the constraint matrix L!')
     
     if r <= 0:
-        raise ValueError, 'The radius must be positive!'
+        raise ValueError('The radius must be positive!')
 
 
 '''
@@ -129,7 +129,7 @@ def __qr_transform(W, b, r, L, y):
     
     sq_s = r * r - np.dot(np.transpose(u), u)
     if sq_s < 0:
-        raise ValueError, 'Incompatible constraints! The linear constraint is not compatible with the unit hyperellipsoid constraint! Unable to find a feasible solution!' 
+        raise ValueError('Incompatible constraints! The linear constraint is not compatible with the unit hyperellipsoid constraint! Unable to find a feasible solution!') 
     
     return (u, C, d, np.sqrt(sq_s), Q)
 
@@ -152,7 +152,7 @@ def __svd_reform(W, b, r, L, y):
     
     sq_s = r * r - np.dot(np.transpose(u), u) 
     if sq_s < 0:
-        raise ValueError, 'Incompatible constraints! The linear constraint is not compatible with the unit hyperellipsoid constraint! Unable to find a feasible solution!' 
+        raise ValueError('Incompatible constraints! The linear constraint is not compatible with the unit hyperellipsoid constraint! Unable to find a feasible solution!')
     
     return (u, C, d, np.sqrt(sq_s), V)
 
@@ -238,7 +238,7 @@ def __solver_secular_gander(d, eigvals, r):
     past_approx = None
     current_approx = max(eigvals) + float((np.abs(d[0]) + 0.01) / r)
     while past_approx == None or current_approx > past_approx:
-        print 'iter', past_approx, current_approx
+        print('iter', past_approx, current_approx)
         past_approx = current_approx
         tmp_expr_1 = __secular_function(past_approx, d, eigvals, r) + r * r
         current_approx = past_approx - 2 * float((tmp_expr_1) / (__secular_function_derivative(past_approx, d, eigvals))) * float(np.sqrt(tmp_expr_1) / r - 1)
@@ -254,7 +254,7 @@ def __find_optimizer(W, lambda_max, b):
     try:
         return np.asarray(np.linalg.solve(W - lambda_max * np.identity(W.shape[0]), b.reshape(-1, 1))).reshape(-1)
     except:
-        print 'WARNING: Unique solution does not exist! Trying to compute one feasible global optimum using pseudo-inverse instead of the actual inverse of the matrix from the stationary constraint!'
+        print('WARNING: Unique solution does not exist! Trying to compute one feasible global optimum using pseudo-inverse instead of the actual inverse of the matrix from the stationary constraint!')
         '''
             The computed lambda value is equal to one of the eigenvalues of matrix W and therefore we need to compute the pseudo-inverse of the matrix W.
             
@@ -295,7 +295,7 @@ def __best_optim_cand(lambdas, W, b, r):
             cand_sols.append((lambdas[i], opt_i))
         
     if len(cand_sols) == 0:
-        raise ValueError, 'The problem is not well defined! Unable to compute the global optimizer!'
+        raise ValueError('The problem is not well defined! Unable to compute the global optimizer!')
     elif len(cand_sols) == 1:
         return cand_sols[0][1]
     

@@ -13,10 +13,10 @@ import numpy as np
 from PIL import Image
 from PIL import ImageDraw
 from PIL import ImageFont
-from query_integral_image import query_integral_image
+from .query_integral_image import query_integral_image
 
 FONT_PATH = "/usr/share/fonts/truetype/droid/DroidSansMono.ttf"
-from stopwords import STOPWORDS
+from .stopwords import STOPWORDS
 
 
 def fit_words(words, font_path=None, width=400, height=200,

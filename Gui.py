@@ -424,14 +424,14 @@ class MainWindow(QMainWindow):
     def load_session(self):
         import dill
         self.__dict__.update(dill.load(open('session.pkl')))
-        print "Session loaded"
+        print("Session loaded")
         self.update()
 
 
     def save_session(self):
         import dill
         dill.dump(self.__dict__, open('session.pkl', "w"))
-        print "Session saved"
+        print("Session saved")
 
 
 
@@ -537,7 +537,7 @@ class MainWindow(QMainWindow):
         """ Generate a menu entry """
         entry = QAction(text, self)
         if icon is not None:
-            print icon
+            print(icon)
             entry.setIcon(QIcon(":/%s.png" % icon))
         if shortcut is not None:
             entry.setShortcut(shortcut)

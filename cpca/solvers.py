@@ -105,7 +105,7 @@ class gander_secular_solver(secular_solver):
 
             return (root + sigmas[asc_sorted_sigmas[-1]], shifted_sigmas - root)
         
-        raise ValueError, 'Operation not supported! It is possible to compute only the largest root!'
+        raise ValueError('Operation not supported! It is possible to compute only the largest root!')
 
 
 class eigen_secular_solver(secular_solver):
@@ -163,7 +163,7 @@ class eigen_secular_solver(secular_solver):
         lep = sigmas[split_idx - 1]
         rep = sigmas[split_idx]
         if np.abs(lep - rep) < self.precision:
-            raise ValueError, 'diagonal matrix must be deflated!'
+            raise ValueError('diagonal matrix must be deflated!')
         
         root = float((lep + rep) / 2.0)
         eta = 1.0
@@ -622,7 +622,7 @@ class quad_solver(object):
                 pinv_solution[top_eig_val_idx] += norm_delta
                 return (pinv_solution, d)
             
-            raise ValueError, 'gander lambda does not exist - the optimization problem is infeasible!'
+            raise ValueError('gander lambda does not exist - the optimization problem is infeasible!')
             
         return (r * eig_sys[1][:, top_eig_val_idx], None)
     

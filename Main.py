@@ -8,10 +8,10 @@ try:
     import os 
     os.environ['MPLBACKEND'] = "module://gr.matplotlib.backend_gr"
 except:
-    print "Not using accelerated matplotlib backend"
+    print("Not using accelerated matplotlib backend")
 from Gui import MainWindow
-from PyQt4.QtCore import *
-from PyQt4.QtGui import *
+from PyQt5.QtCore import *
+from PyQt5.QtGui import *
 from Dataset import Dataset
 import sys
 import pandas as pd
@@ -283,5 +283,5 @@ def start_InVis(pandasdata=None):
 
 
 if __name__ == "__main__":
-    print "Matplotlib rendereing Backend is --" + pl.get_backend() + "--"
+    print("Matplotlib rendereing Backend is --" + pl.get_backend() + "--")
     invis = start_InVis()

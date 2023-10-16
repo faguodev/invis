@@ -63,7 +63,7 @@ def sqrt_inverse_sym_pd_mat(K):
     D = np.zeros((eigvals.shape[0], eigvals.shape[0]))
     for i in range(D.shape[0]):
         if eigvals[i] <= 0 or np.abs(np.imag(eigvals[i])) > 0:
-            raise ValueError, 'The matrix K is not strictly positive definite, Eigenvalue_' + str(i) + ' = ' + str(eigvals[i])
+            raise ValueError('The matrix K is not strictly positive definite, Eigenvalue_' + str(i) + ' = ' + str(eigvals[i]))
         
         D[i][i] = float(1.0 / np.sqrt(np.real(eigvals[i])))
     
@@ -255,7 +255,7 @@ def min_spanning_tree(g, root=0):
             v_costs[mc_vertex] = np.Inf
         
         return (mst_edges, sh_paths)
-    except Exception, ex:
+    except Exception as ex:
         warnings.warn('error while computing minimum spanning tree: ' + str(ex))
         return None
         

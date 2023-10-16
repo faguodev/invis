@@ -87,8 +87,8 @@ class Dataset():
                 import arff
                 self.read_in_arff(path)
             except:
-                print "Need package liac-arff installed"
-                print "Try \"pip install liac-arff\""
+                print("Need package liac-arff installed")
+                print("Try \"pip install liac-arff\"")
         elif extension == 'ts':
             self.read_in_timeseries(path)
         else: # assume it is libsvm format
@@ -351,8 +351,8 @@ class Dataset():
             for s in range(kFrequencies):
                 self.original_data[i,arProcessLags+maProcessLags+autoCorrelLags+s+6] = freqs[s]
             if np.isnan(self.original_data[i]).any():
-                print "Nan in line ",i,":"
-                print self.original_data[i]
+                print("Nan in line ",i,":")
+                print(self.original_data[i])
         self.data = copy(self.original_data)
         self.label_name = 'Label'
         self.ignored_attributes.append('Label')        
@@ -440,7 +440,7 @@ class Dataset():
             elif constraint == '=':
                 return values==value
         except:
-            print "That constraint is unknown. Try >,<,="
+            print("That constraint is unknown. Try >,<,=")
             return np.ones(len(values)).astype(bool)
 
 
@@ -487,8 +487,8 @@ class Dataset():
         self.data = copy(self.original_data.T[self.mask].T)
         self.normalize()
         if np.isnan(self.data).any():
-            print "Nan in copied data after normalizing:"
-            print self.original_data
+            print("Nan in copied data after normalizing:")
+            print(self.original_data)
 
 
     def get_labels(self):

@@ -74,7 +74,7 @@ class embedder(object):
         
         sq_s = r * r - u.T.dot(u)
         if sq_s < 0:
-            raise ValueError, 'Incompatible constraints! The linear constraint is not compatible with the unit hyperellipsoid constraint! Unable to find a feasible solution!' 
+            raise ValueError('Incompatible constraints! The linear constraint is not compatible with the unit hyperellipsoid constraint! Unable to find a feasible solution!') 
         
         return (u, C, d, np.sqrt(sq_s), Q)
     
@@ -208,11 +208,11 @@ class embedder(object):
                 solution_estimate[sorted_eig_idxs[-1]] += norm_delta
                 return np.asarray(U.dot(solution_estimate)).reshape(-1)
             else:
-                raise ValueError, 'The optimization problem does not have a solution!'
+                raise ValueError('The optimization problem does not have a solution!')
         elif iteration == self.__max_secular_iters:
             secular_delta = self.__secular_function(lambda_max, d, eigvals, r)
             if np.abs(secular_delta) > self.__worst_case_secular_precision:
-                raise ValueError, 'The optimization problem does not have a solution!'
+                raise ValueError('The optimization problem does not have a solution!')
             
         return np.asarray(U.dot(d / (eigvals - lambda_max))).reshape(-1)
     
@@ -249,16 +249,16 @@ class embedder(object):
     def __validate_parameters(self, W, r, b, K, L, y):
         n = W.shape[0]
         if None != b and b.shape[0] != n and len(b.shape) == 2 and b.shape[1] != y.shape[1]:
-            raise ValueError, 'The b vector is of inappropriate dimension. Its expected dimension is ' + str(n) + '!'
+            raise ValueError('The b vector is of inappropriate dimension. Its expected dimension is ' + str(n) + '!')
         
         if None != L and (L.shape[1] != n or L.shape[0] >= n):
-            raise ValueError, 'The constraint matrix L is of inappropriate dimension. Its expected dimension is m x ' + str(n) + ' with m < ' + str(n) + '!'
+            raise ValueError('The constraint matrix L is of inappropriate dimension. Its expected dimension is m x ' + str(n) + ' with m < ' + str(n) + '!')
         
         if None != y and (L == None or y.shape[0] != L.shape[0]):
-            raise ValueError, 'The constraint value vector is of invalid dimension or it is specified without the constraint matrix L!'
+            raise ValueError('The constraint value vector is of invalid dimension or it is specified without the constraint matrix L!')
         
         if r <= 0:
-            raise ValueError, 'The radius must be positive!'
+            raise ValueError('The radius must be positive!')
     
     def compute_hard_orth_dirs(self, W, r, d, b=None, K=None, transf_opers=None):
         self.__validate_parameters(W, r, b, K, None, None)
