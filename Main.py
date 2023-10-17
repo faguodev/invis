@@ -12,6 +12,7 @@ except:
 from Gui import MainWindow
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
+from PyQt5.QtWidgets import *
 from Dataset import Dataset
 import sys
 import pandas as pd
@@ -36,7 +37,8 @@ class InVis(MainWindow):
         if len(sys.argv) > 1:
             try:
                 self.load_file(filename=sys.argv[1])
-            except:
+            except Exception as e:
+                print(e)
                 pass
         if type(pandasdata) == type(pd.DataFrame([])):
             """ Load a dataset from a file """
@@ -73,7 +75,7 @@ class InVis(MainWindow):
             self.control_click = False
             self.lastevent = None	
             self.data_clipped = False
-            self.color_scheme = pl.cm.Blues
+            self.color_scheme = "Blues"
             self.axes.set_aspect('auto')
             self.data = Dataset()
 
@@ -128,13 +130,12 @@ class InVis(MainWindow):
         self.control_click = False
         self.lastevent = None
         self.data_clipped = False
-        self.color_scheme = pl.cm.Blues
+        self.color_scheme = "Blues"
         self.axes.set_aspect('auto')
         self.data = Dataset()
         if filename == None:
             filename = QFileDialog.getOpenFileName(self,
                 'Open a data file', '.', 'All Files (*.*)')
-        
         if filename:
             self.clear()
             self.data.read_in_data(filename)

@@ -97,8 +97,8 @@ class Dataset():
         for i, name in enumerate(self.attribute_names):
             if name not in self.ignored_attributes:
                 self.mask.append(i)
-        self.attribute_names = np.array([unidecode(n.decode('utf-8')) for n in self.attribute_names])
-        self.instance_names = [unidecode(n.decode('utf-8')) for n in self.instance_names]
+        self.attribute_names = np.array([unidecode(n) for n in self.attribute_names])
+        self.instance_names = [unidecode(n) for n in self.instance_names]
         #self.normalize()
 
 

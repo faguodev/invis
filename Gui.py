@@ -247,19 +247,19 @@ class MainWindow(QMainWindow):
         self.axes.figure.canvas.mpl_connect('motion_notify_event', self.on_motion)
         self.axes.figure.canvas.mpl_connect('scroll_event', self.on_scroll)
         # connect the GUI buttons and textfields
-        self.connect(self.label_text_field, SIGNAL('returnPressed()'), self.label_updated)
-        self.connect(self.search_text_field, SIGNAL('returnPressed()'), self.highlight_search_results)
-        self.connect(self.next_label_button, SIGNAL('clicked()'), self.set_next_attribute_as_label)
-        self.connect(self.select_search_button, SIGNAL('clicked()'), self.select_search_result)
-        self.connect(self.select_button, SIGNAL('clicked()'), self.select_all_action)
-        self.connect(self.update_button, SIGNAL('clicked()'), self.recalculate_embedding)
-        self.connect(self.auto_select_button, SIGNAL('clicked()'), self.next_uncertain)
-        self.connect(self.info_button, SIGNAL('clicked()'), self.set_info_request)
-        self.connect(self.cp_select_button, SIGNAL('clicked()'), self.set_cp_select_request)
-        self.connect(self.ml_cl_button, SIGNAL('clicked()'), self.toggle_ml_cl_state)
-        self.connect(self.lasso_button, SIGNAL('clicked()'), self.set_lasso_request)
-        self.connect(self.cut_button, SIGNAL('clicked()'), self.toggle_data_filter)
-        self.connect(self.clear_button, SIGNAL('clicked()'), self.clear)
+        self.label_text_field.returnPressed.connect(self.label_updated)
+        self.search_text_field.returnPressed.connect(self.highlight_search_results)
+        self.next_label_button.clicked.connect(self.set_next_attribute_as_label)
+        self.select_search_button.clicked.connect(self.select_search_result)
+        self.select_button.clicked.connect(self.select_all_action)
+        self.update_button.clicked.connect(self.recalculate_embedding)
+        self.auto_select_button.clicked.connect(self.next_uncertain)
+        self.info_button.clicked.connect(self.set_info_request)
+        self.cp_select_button.clicked.connect(self.set_cp_select_request)
+        self.ml_cl_button.clicked.connect(self.toggle_ml_cl_state)
+        self.lasso_button.clicked.connect(self.set_lasso_request)
+        self.cut_button.clicked.connect(self.toggle_data_filter)
+        self.clear_button.clicked.connect(self.clear)
         # connect the attribute list's checkboxes
         self.series_list_model.itemChanged.connect(self.attributes_updated)
 
@@ -1095,7 +1095,7 @@ class MainWindow(QMainWindow):
         import pydotplus
         from PIL import Image
         from sklearn import cross_validation, tree
-        from StringIO import StringIO
+        from io import StringIO
 
         attributes = [i for i,name in enumerate(self.data.attribute_names) if name not in self.data.ignored_attributes]
         attribute_names = [name for name in self.data.attribute_names if name not in self.data.ignored_attributes]
@@ -1340,7 +1340,8 @@ class MainWindow(QMainWindow):
                 break
         if event.mouseevent.button == 1:
             self.path = None
-            self.axes.patches = []
+            for patch in self.axes.patches:
+                patch.remove()
             if self.info_request:
                 if ind not in self.info_requests:
                     self.info_requests.append(ind)
@@ -1478,7 +1479,8 @@ class MainWindow(QMainWindow):
         self.lassoed_points = []
         self.path = None
         self.center_ind = None
-        self.axes.patches = []
+        for patch in self.axes.patches:
+            patch.remove()
         self.searched_results = []
         self.info_requests = []
         self.highlighted = []
@@ -1494,7 +1496,8 @@ class MainWindow(QMainWindow):
         self.axes.set_xlim(self.xlim)
         self.axes.set_ylim(self.ylim)
         self.axes.set_aspect('auto')
-        self.axes.texts = []
+        for text in self.axes.texts:
+            text.remove()
         if self.show_origin:
             self.axes.plot([0,0], [self.ylim[0], self.ylim[1]], color='k', alpha=0.08, zorder=0)
             self.axes.plot([self.xlim[0], self.xlim[1]], [0,0], color='k', alpha=0.08, zorder=0)
@@ -1520,7 +1523,8 @@ class MainWindow(QMainWindow):
                     x,y = dummy_embedding.T[s]
                     self.axes.annotate(attr_names[s], (x, y), alpha=0.6, fontsize=14,color='k')
         if len(self.control_points.keys()) > 0:
-            self.axes.scatter(self.embedding[0][self.control_points.keys()], self.embedding[1][self.control_points.keys()], color='k', s=self.point_size[self.control_points.keys()]+40, facecolor='none', edgecolor=self.control_point_color[self.color_scheme], linewidth=4, zorder=100)
+            control_point_indices = list(self.control_points.keys())
+            self.axes.scatter(self.embedding[0][control_point_indices], self.embedding[1][control_point_indices], color='k', s=self.point_size[control_point_indices]+40, facecolor='none', edgecolor=self.control_point_color[self.color_scheme], linewidth=4, zorder=100)
         if len(self.lassoed_points) > 0:
             self.axes.scatter(self.embedding[0][self.lassoed_points], self.embedding[1][self.lassoed_points], color='k', s=self.point_size, facecolor='none', edgecolor='k', linewidth=2, zorder=10, alpha=0.3)
             if self.path != None:
