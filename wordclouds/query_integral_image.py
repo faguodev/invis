@@ -10,8 +10,8 @@ def query_integral_image(integral_image, size_x, size_y):
     hits = 0
 
     # count how many possible locations
-    for i in xrange(0, x - size_x, stepsize):
-        for j in xrange(0, y - size_y, stepsize):
+    for i in range(0, x - size_x, stepsize):
+        for j in range(0, y - size_y, stepsize):
             area = integral_image[i, j] + integral_image[i + size_x, j + size_y]
             area -= integral_image[i + size_x, j] + integral_image[i, j + size_y]
             if not area:
@@ -22,8 +22,8 @@ def query_integral_image(integral_image, size_x, size_y):
     # pick a location at random
     goal = np.random.randint(hits)
     hits = 0
-    for i in xrange(0, x - size_x, stepsize):
-        for j in xrange(0, y - size_y, stepsize):
+    for i in range(0, x - size_x, stepsize):
+        for j in range(0, y - size_y, stepsize):
             area = integral_image[i, j] + integral_image[i + size_x, j + size_y]
             area -= integral_image[i + size_x, j] + integral_image[i, j + size_y]
             if not area:

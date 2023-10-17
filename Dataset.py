@@ -297,13 +297,13 @@ class Dataset():
                             'Global trend',
                             'Smoothness', # aka Lag 1
                             ]        
-        for i in xrange(0, arProcessLags):
+        for i in range(0, arProcessLags):
             attributeNames.append('ARIMA AR Param for t - '+str(i))
-        for i in xrange(0, maProcessLags):
+        for i in range(0, maProcessLags):
             attributeNames.append('ARIMA MA Param for t - '+str(i))
-        for i in xrange(1, autoCorrelLags):
+        for i in range(1, autoCorrelLags):
             attributeNames.append('Autocorrellation Lag '+str(i+1))
-        for i in xrange(0, kFrequencies):
+        for i in range(0, kFrequencies):
             attributeNames.append("Freq. of DFT no "+str(i+1))
         attributeNames.append('Label')                                         
         self.attribute_names = np.array(attributeNames)
@@ -334,9 +334,9 @@ class Dataset():
                     iFail = 0   
                 except:
                     iFail += 1
-            for s in xrange(arProcessLags):
+            for s in range(arProcessLags):
                 self.original_data[i,s+6] = arparams[s]
-            for s in xrange(maProcessLags):
+            for s in range(maProcessLags):
                 self.original_data[i,s+6+arProcessLags] = maparams[s]
             # lagged autocorrellation
             for s in range(autoCorrelLags):
