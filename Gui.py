@@ -1,27 +1,30 @@
 #!/usr/bin/python
-import numpy as np
-import matplotlib.pyplot as pl
-from PyQt5.QtCore import *
-from PyQt5.QtGui import *
-from PyQt5.QtWidgets import *
-import matplotlib
+import os
+from collections import defaultdict
+from copy import copy
+from os import path
+from re import findall
+
 import dill
+import matplotlib
+import matplotlib.patches as patches
+import matplotlib.pyplot as pl
+import numpy as np
 # from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 from matplotlib.widgets import Lasso
-from scipy.spatial import distance
-from Embedder import *
-from collections import defaultdict
-from re import findall
-from copy import copy
-from itemset_mining import ItemsetMiner
-import wordclouds
-from os import path
 from PIL import Image, ImageDraw, ImageFont
-import matplotlib.patches as patches
-import os
+from PyQt5.QtCore import *
+from PyQt5.QtGui import *
+from PyQt5.QtWidgets import *
+from scipy.spatial import distance
+
+import wordclouds
+from Embedder import *
 from Embedder import PopupSlider
+from itemset_mining import ItemsetMiner
+
 
 class MainWindow(QMainWindow):
     """ The main GUI class """
@@ -36,7 +39,7 @@ class MainWindow(QMainWindow):
         self.ylim = [-3,3]
         self.pick_sensitivity = 5
         self.show_origin = False
-        self.color_scheme = pl.cm.Blues
+        self.color_scheme = "Blues"
         self.colors = None
         self.opacity = 0.4
         self.boost_label_color = False
@@ -90,7 +93,7 @@ class MainWindow(QMainWindow):
         self.path = None
         self.center_ind = None
         self.tag_elements = []
-        self.control_point_color = {pl.cm.RdYlGn:'b', pl.cm.Spectral:'k', pl.cm.Blues:'m', pl.cm.hot:'b'}
+        self.control_point_color = {"RdYlGn":'b', "Spectral":'k', "Blues":'m', "hot":'b'}
 
         self.setWindowTitle('InVis')
         self.series_list_model = QStandardItemModel()
@@ -534,7 +537,7 @@ class MainWindow(QMainWindow):
             self.update()
 
 
-    def prepare_menu_entry(self, text, slot=None, shortcut=None, icon=None, tip=None, checkable=False, signal="triggered()", greyed_out=False):
+    def prepare_menu_entry(self, text, slot=None, shortcut=None, icon=None, tip=None, checkable=False, signal="triggered", greyed_out=False):
         """ Generate a menu entry """
         entry = QAction(text, self)
         if icon is not None:
@@ -546,7 +549,8 @@ class MainWindow(QMainWindow):
             entry.setToolTip(tip)
             entry.setStatusTip(tip)
         if slot is not None:
-            self.connect(entry, SIGNAL(signal), slot)
+            actual_signal = getattr(entry, signal)
+            actual_signal.connect(slot)
         if checkable:
             entry.setCheckable(True)
         if greyed_out:
@@ -709,6 +713,7 @@ class MainWindow(QMainWindow):
     def open_help(self):
         """ Opens a pdf manual """
         import webbrowser
+
         # webbrowser.open_new('http://www-kd.iai.uni-bonn.de/softwarefiles/31/manual.pdf')
         webbrowser.open_new(os.path.join(self.cwd,"manual.pdf"))
 
@@ -975,28 +980,28 @@ class MainWindow(QMainWindow):
     def set_color_RdYlGn(self):
         """ Set the coloring of the embedded data records to Red/Yellow/Green """
         if self.data != None:
-            self.color_scheme = pl.cm.RdYlGn
+            self.color_scheme = "RdYlGn"
             self.update()
 
 
     def set_color_spectral(self):
         """ Set the coloring of the embedded data records to spectral """
         if self.data != None:
-            self.color_scheme = pl.cm.Spectral
+            self.color_scheme = "Spectral"
             self.update()
 
 
     def set_color_Blues(self):
         """ Set the coloring of the embedded data records to blue tones """
         if self.data != None:
-            self.color_scheme = pl.cm.Blues
+            self.color_scheme = "Blues"
             self.update()
 
 
     def set_color_hot(self):
         """ Set the coloring of the embedded data records to a hot scale """
         if self.data != None:
-            self.color_scheme = pl.cm.hot
+            self.color_scheme = "hot"
             self.update()
 
 
@@ -1086,11 +1091,11 @@ class MainWindow(QMainWindow):
             self.generate_discretization_splits()
         d = path.dirname(__file__)
 
-        from sklearn import tree, cross_validation
         import matplotlib.image as mplimg
-        from StringIO import StringIO
         import pydotplus
         from PIL import Image
+        from sklearn import cross_validation, tree
+        from StringIO import StringIO
 
         attributes = [i for i,name in enumerate(self.data.attribute_names) if name not in self.data.ignored_attributes]
         attribute_names = [name for name in self.data.attribute_names if name not in self.data.ignored_attributes]
@@ -1498,7 +1503,7 @@ class MainWindow(QMainWindow):
                 self.colors = np.zeros(len(self.data.data))
                 for highlight in self.searched_results:
                     self.colors[highlight] = 1.0
-            self.scatter_plot = self.axes.scatter(self.embedding[0], self.embedding[1], color=self.color_scheme(self.colors), picker=self.pick_sensitivity, edgecolor=(0.3,0.3,0.3,0.2), s=self.point_size, zorder=2, alpha=self.opacity)
+            self.scatter_plot = self.axes.scatter(self.embedding[0], self.embedding[1], color=pl.get_cmap(self.color_scheme)(self.colors), picker=self.pick_sensitivity, edgecolor=(0.3,0.3,0.3,0.2), s=self.point_size, zorder=2, alpha=self.opacity)
         else:
             self.scatter_plot = self.axes.scatter(self.embedding[0], self.embedding[1], facecolor='none', picker=self.pick_sensitivity, edgecolor=(0.3,0.3,0.3,0.2), s=self.point_size, zorder=2, alpha=self.opacity)
             for i, txt in enumerate(self.data.instance_names):
