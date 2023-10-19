@@ -95,9 +95,7 @@ class InVis(MainWindow):
                 self.connect_canvas()
 
         
-
-
-
+    @pyqtSlot()
     def load_file(self, filename=None):
         """ Load a dataset from a file """
         self.show_singletons = False
