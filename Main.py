@@ -132,8 +132,7 @@ class InVis(MainWindow):
         self.axes.set_aspect('auto')
         self.data = Dataset()
         if filename == None:
-            filename = QFileDialog.getOpenFileName(self,
-                'Open a data file', '.', 'All Files (*.*)')
+            filename, _ = QFileDialog.getOpenFileName(self, 'Open a data file', '.', 'All Files (*.*)')
         if filename:
             self.clear()
             self.data.read_in_data(filename)
