@@ -1061,6 +1061,7 @@ class MainWindow(QMainWindow):
         self.axes.figure.canvas.widgetlock.release(self.lasso)
 
 
+    # TODO: This code looks a bit iffy
     def generate_discretization_splits(self):
         if self.data != None:
             self.discretization_type, ok = QInputDialog.getText(self, 'Discretization', 'Enter number of the desired discretization method:\n1) True if value > 0 (Default)\n2) True if value > average\n3) True if value > median\n4) True if value > half range\n5) True if value > average + 1*std')

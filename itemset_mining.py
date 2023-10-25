@@ -242,12 +242,13 @@ class ItemsetMiner():
 
 
     def get_frequent_itemsets(self, transactions, mode, top_k=10):
+        # TODO: Next week I checked the export_freq method until here, any deviations likely occur in this method, possibly after, highly unlikely before
         result = eclat(transactions, mode, -self.minsupport, self.minitems, self.maxitems, [])
         d = defaultdict(list)
         for r in result:
             name = frozenset(r[0])
             d[name] = r[1][0]
-        return sorted(d.iteritems(), key=operator.itemgetter(1), reverse=True)[:top_k]
+        return sorted(d.items(), key=operator.itemgetter(1), reverse=True)[:top_k]
 
 
     def get_support(self, itemset, database):

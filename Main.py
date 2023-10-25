@@ -90,7 +90,8 @@ class InVis(MainWindow):
             self.set_xy_limits()
             self.label_updated()
             self.point_size = np.ones(len(self.data.data))*80
-            self.splits = list(np.zeros(len(self.data.attribute_names)))
+            # self.splits defines a list of values where for each attribute if a value is above the value defined here, it is decretizied to be True, False otherwise
+            self.splits = list(np.zeros(len(self.data.attribute_names))) 
             if not self.canvas_connected:
                 self.connect_canvas()
 
@@ -152,17 +153,32 @@ class InVis(MainWindow):
 
     def export_projection_matrix(self):
         """ Export the projection matrix """
-        if self.data != None:
-            filename = str(QFileDialog.getSaveFileName(self, "Export projection matrix", ""))
-            try:
-                np.savetxt(filename, self.embedding_algorithm.projection_matrix, delimiter=',', fmt='%10.5f')
-            except:
-                pass
+        if self.data is not None:
+            filename, _ = QFileDialog.getSaveFileName(self, "Export projection matrix", "")
+            if filename:
+                try:
+                    np.savetxt(filename, self.embedding_algorithm.projection_matrix, delimiter=',', fmt='%10.5f')
+                except:
+                    pass
 
 
     def export_freq(self):
         """ Export frequent patterns """
         if self.data != None:
+
+
+            # print(len(self.data.data))
+            # write self.data.data to ./data/data-test.txt
+            """ import csv
+
+            f = open("./data/data-test.csv", "w")
+        
+            writer = csv.writer(f)
+            for i in range(len(self.data.data)):
+
+                writer.writerow(self.data.data[i]) """
+
+
             self.update_status_bar('Mining & exporting patterns')
             representation, ok = QInputDialog.getText(self, 'Pattern representation', 'Represent the patterns via extention <e>, or intention <i>? (default is intention)')
             if not representation in ['e', 'i']:
@@ -172,20 +188,22 @@ class InVis(MainWindow):
                 top_k = int(top_k)
             except:
                 top_k = 1000
-            filename = str(QFileDialog.getSaveFileName(self, "Export to", ""))
-            if self.discretization_type == None:
-                self.generate_discretization_splits()
-            iMiner = ItemsetMiner(self.data, self.splits, 1, 1, 50, range(len(self.data.data)), self.show_ignored_attributes)
-            transactions = iMiner.build_itemsets(constraint='0')
-            patterns = iMiner.get_frequent_itemsets(transactions, 's', top_k=top_k)
-            if representation == 'i':
-                out = iMiner.export_patterns(patterns, 'Support')
-            else:
-                out = iMiner.export_patterns_extension_representation(patterns, 'Support')
-            f = open(filename, 'w')
-            f.write(out)
-            f.close()
-            self.update_status_bar('Done mining & exporting patterns')
+            filename, _ = QFileDialog.getSaveFileName(self, "Export to", "")
+            if filename:
+                if self.discretization_type == None:
+                    self.generate_discretization_splits()
+                iMiner = ItemsetMiner(self.data, self.splits, 1, 1, 50, range(len(self.data.data)), self.show_ignored_attributes)
+                transactions = iMiner.build_itemsets(constraint='0')
+                print(len(transactions))
+                patterns = iMiner.get_frequent_itemsets(transactions, 's', top_k=top_k)
+                if representation == 'i':
+                    out = iMiner.export_patterns(patterns, 'Support')
+                else:
+                    out = iMiner.export_patterns_extension_representation(patterns, 'Support')
+                f = open(filename, 'w')
+                f.write(out)
+                f.close()
+                self.update_status_bar('Done mining & exporting patterns')
 
 
     def export_closed(self):
