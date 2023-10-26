@@ -218,7 +218,7 @@ class InVis(MainWindow):
                 top_k = int(top_k)
             except:
                 top_k = 500
-            filename = str(QFileDialog.getSaveFileName(self, "Export to", ""))
+            filename, _ = QFileDialog.getSaveFileName(self, "Export to", "")
             if self.discretization_type == None:
                 self.generate_discretization_splits()
             iMiner = ItemsetMiner(self.data, self.splits, 1, 1, 50, range(len(self.data.data)), self.show_ignored_attributes)
@@ -246,7 +246,7 @@ class InVis(MainWindow):
                 top_k = int(top_k)
             except:
                 top_k = 100
-            filename = str(QFileDialog.getSaveFileName(self, "Export to", ""))
+            filename, _ = QFileDialog.getSaveFileName(self, "Export to", "")
             if self.discretization_type == None:
                 self.generate_discretization_splits()
             iMiner = ItemsetMiner(self.data, self.splits, 2, 1, 5, range(len(self.data.data)), self.show_ignored_attributes)
@@ -273,7 +273,7 @@ class InVis(MainWindow):
                 top_k = int(top_k)
             except:
                 top_k = 100
-            filename = str(QFileDialog.getSaveFileName(self, "Export to", ""))
+            filename, _ = QFileDialog.getSaveFileName(self, "Export to", "")
             if self.discretization_type == None:
                 self.generate_discretization_splits()
             iMiner = ItemsetMiner(self.data, self.splits, 1, 1, 50, range(len(self.data.data)), self.show_ignored_attributes)

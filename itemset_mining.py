@@ -242,7 +242,6 @@ class ItemsetMiner():
 
 
     def get_frequent_itemsets(self, transactions, mode, top_k=10):
-        # TODO: Next week I checked the export_freq method until here, any deviations likely occur in this method, possibly after, highly unlikely before
         result = eclat(transactions, mode, -self.minsupport, self.minitems, self.maxitems, [])
         d = defaultdict(list)
         for r in result:
