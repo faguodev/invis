@@ -232,13 +232,13 @@ class ItemsetMiner():
 
     def get_item_frequencies(self, transactions, top_k=10):
         # print self.item_frequencies
-        return sorted(self.item_frequencies.iteritems(), key=operator.itemgetter(1), reverse=True)[:top_k]
+        return sorted(self.item_frequencies.items(), key=operator.itemgetter(1), reverse=True)[:top_k]
 
         # result = eclat(transactions, 's', -1, 1, 1, [])
         # d = defaultdict(list)
         # for r in result:
             # d[frozenset([r[0][0]])] = r[1][0]
-        # return sorted(d.iteritems(), key=operator.itemgetter(1), reverse=True)[:top_k]
+        # return sorted(d.items(), key=operator.itemgetter(1), reverse=True)[:top_k]
 
 
     def get_frequent_itemsets(self, transactions, mode, top_k=10):
@@ -323,7 +323,7 @@ class ItemsetMiner():
             binomial_q = np.sqrt(p+n)*((p/(p+n)) - p0)
             qualities[r] = binomial_q
 
-        return sorted(qualities.iteritems(), key=operator.itemgetter(1), reverse=True)[:top_k]
+        return sorted(qualities.items(), key=operator.itemgetter(1), reverse=True)[:top_k]
 
 
     def get_subgroups(self, top_k=10):
@@ -353,7 +353,7 @@ class ItemsetMiner():
             binomial_q = np.sqrt(p+n)*((p/(p+n)) - p0)
             qualities[f] = binomial_q
 
-        return sorted(qualities.iteritems(), key=operator.itemgetter(1), reverse=True)[:top_k]
+        return sorted(qualities.items(), key=operator.itemgetter(1), reverse=True)[:top_k]
 
 
     def export_patterns(self, items, label_name):
