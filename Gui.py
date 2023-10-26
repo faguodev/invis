@@ -1333,6 +1333,7 @@ class MainWindow(QMainWindow):
         interesting_points = []
         interesting_points += self.searched_results
         interesting_points += self.info_requests
+        # TODO check if .keys() has an issue here
         interesting_points += self.control_points.keys()
         ind = event.ind[0]
         for p in interesting_points:
@@ -1360,6 +1361,7 @@ class MainWindow(QMainWindow):
                 self.add_must_link(ind)
             elif self.ml_cl_available and (self.ml_cl_state == 'CL'):
                 self.add_cannot_link(ind)
+            # TODO check if .keys() has an issue here
             if ind in self.control_points.keys():
                 self.selected_point = ind
         elif event.mouseevent.button == 2:
@@ -1523,7 +1525,9 @@ class MainWindow(QMainWindow):
                 for s in sorting[:5]:
                     x,y = dummy_embedding.T[s]
                     self.axes.annotate(attr_names[s], (x, y), alpha=0.6, fontsize=14,color='k')
+        # TODO check if .keys() has an issue here
         if len(self.control_points.keys()) > 0:
+            # TODO check if .keys() has an issue here
             control_point_indices = list(self.control_points.keys())
             self.axes.scatter(self.embedding[0][control_point_indices], self.embedding[1][control_point_indices], color='k', s=self.point_size[control_point_indices]+40, facecolor='none', edgecolor=self.control_point_color[self.color_scheme], linewidth=4, zorder=100)
         if len(self.lassoed_points) > 0:

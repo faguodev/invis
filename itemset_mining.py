@@ -297,8 +297,8 @@ class ItemsetMiner():
             support_set_pos[cp] = self.get_support_set(closed_pos[cp], data_pos)
 
         # remove the dominated itmesets, thus keeping all relevant itemsets
-        keys = closed_pos.keys()
-        relevant_sets = closed_pos.keys()
+        keys = list(closed_pos.keys())
+        relevant_sets = list(closed_pos.keys())
         for kx in keys:
             for ky in keys:
                 try:
@@ -306,9 +306,11 @@ class ItemsetMiner():
                     y = closed_pos[ky]
                     if x.issubset(y) and kx != ky:
                         if mode == 'absolute':
+                            # with delta = 0 this is normal relevant pattern mining according to Garriga et al. 2008
                             if len(support_set_neg[kx].difference(support_set_neg[ky])) <= delta:
                                 relevant_sets.remove(ky)
                         elif mode == 'relative':
+                            # TODO: I suppose this isn't fully implemented yet as delta_frac seems to be undefined, also this algorithm doesn't match the algorithm described in @geckos dissertation
                             if len(support_set_neg[kx].difference(support_set_neg[ky])) <= delta_frac*(float(supports_neg[ky]) + float(supports_pos[ky])):
                                 relevant_sets.remove(ky)
                 except:

@@ -278,7 +278,7 @@ class InVis(MainWindow):
                 self.generate_discretization_splits()
             iMiner = ItemsetMiner(self.data, self.splits, 1, 1, 50, range(len(self.data.data)), self.show_ignored_attributes)
             patterns = iMiner.get_delta_relevant_itemsets(1, 'absolute', top_k=top_k)
-            if representation == 'intention':
+            if representation == 'i':
                 out = iMiner.export_patterns(patterns, 'Quality')
             else:
                 out = iMiner.export_patterns_extension_representation(patterns, 'Quality')
