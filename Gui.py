@@ -593,7 +593,7 @@ class MainWindow(QMainWindow):
             for row in range(self.series_list_model.rowCount()):
                 model_index = self.series_list_model.index(row, 0)
                 checked = self.series_list_model.data(model_index, Qt.CheckStateRole) == QVariant(Qt.Checked)
-                name = str(self.series_list_model.data(model_index).toString())
+                name = str(self.series_list_model.data(model_index))
                 if checked:
                     unignore.append(name)
                 else:
@@ -731,7 +731,7 @@ class MainWindow(QMainWindow):
                     check_box = self.series_list_model.item(row)
                     check_box.setCheckState(Qt.Unchecked)
                     model_index = self.series_list_model.index(row, 0)
-                    name = str(self.series_list_model.data(model_index).toString())
+                    name = str(self.series_list_model.data(model_index))
                     changed_attributes_name_list.append(name)
                 self.data.ignored_attributes = []
                 self.data.ignore_attributes(changed_attributes_name_list)
@@ -741,7 +741,7 @@ class MainWindow(QMainWindow):
                     check_box = self.series_list_model.item(row)
                     check_box.setCheckState(Qt.Checked)
                     model_index = self.series_list_model.index(row, 0)
-                    name = str(self.series_list_model.data(model_index).toString())
+                    name = str(self.series_list_model.data(model_index))
                     changed_attributes_name_list.append(name)
                 self.data.ignored_attributes = []
                 self.data.ignore_attributes([])

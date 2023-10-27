@@ -1,7 +1,6 @@
 #!/usr/bin/python
 import numpy as np
 from copy import copy
-from sklearn import manifold
 from sklearn import decomposition
 from collections import defaultdict
 # from scipy.spatial import distance
@@ -10,13 +9,15 @@ from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
 # explicitly imported "hidden imports" for pyinstaller
 #from sklearn.utils import weight_vector, lgamma
-from sklearn.metrics.pairwise import euclidean_distances, pairwise_distances
+from sklearn.metrics import pairwise_distances
+from sklearn import manifold
 
 # Dinos solver
 import cpca.solvers as solvers
 import cpca.skpca as skpca
 import cpca.kernel_gen as kernel_gen
 import cpca.utils as utils
+import scipy
 
 try:
     from sklearn.utils.sparsetools import _graph_validation
@@ -199,7 +200,8 @@ class LLE(Embedding):
                 lle = manifold.LocallyLinearEmbedding(n_neighbors=int(num), n_components=2)
             lle.fit(data)
             self.embedding = np.array(lle.transform(data))
-        except:
+        except Exception as e:
+            print(e)
             msg = "It seems like the embedding algorithm did not converge with the given parameter setting"
             QMessageBox.about(parent, "Embedding error", msg)
 
@@ -226,7 +228,7 @@ class XY(Embedding):
             checked = self.parent.series_list_model.data(model_index, Qt.CheckStateRole) == QVariant(Qt.Checked)
             if checked:
                 if len(used_attributes) < 2:
-                    name = str(self.parent.series_list_model.data(model_index).toString())
+                    name = str(self.parent.series_list_model.data(model_index))
                     used_attributes.append(list(self.parent.data.attribute_names).index(name))
                     # print self.parent.data.attribute_names[used_attributes[-1]]
                 else:
@@ -258,12 +260,11 @@ class ISO(Embedding):
             num = int(self.w.slider_value)
             if num == '':
                 num = 4
-            try:
-                iso = manifold.Isomap(n_neighbors=int(num), out_dim=2)
-            except:
-                iso = manifold.Isomap(n_neighbors=int(num), n_components=2)
-            iso.fit(data)
-            self.embedding = np.array(iso.transform(data))   
+            iso = manifold.Isomap(n_neighbors=int(num), n_components=2)
+            print("Computing embedding")
+
+            self.embedding = iso.fit_transform(data)  
+            print("Done.")
         except:
             msg = "It seems like the embedding algorithm did not converge with the given parameter setting"
             QMessageBox.about(parent, "Embedding error", msg)
@@ -335,9 +336,8 @@ class MDS(Embedding):
         parent.setWindowTitle('InVis: ' + parent.data.dataset_name + ' (MDS [%s])'%m)
         dists = pairwise_distances(data, metric=m)
         dists = (dists + dists.T)/2.0
-        e, stress = manifold.mds.smacof(dists, n_components=2)
-        self.embedding = e
-
+        mds = manifold.MDS(n_components=2, dissimilarity='precomputed')
+        self.embedding = mds.fit_transform(dists)
 
     def get_embedding(self):
         return self.embedding.T
