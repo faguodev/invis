@@ -383,44 +383,23 @@ class Dataset():
             self.label_name = None
         else:
             self.database_type = 'DATA'
-            self.attribute_names = np.array(rawdata.pop(0).rstrip().split(',')[1:])
+            df = pd.read_csv(path, sep=None, engine="python")
+
+            # Drop the first column, regardless of its content
+            df = df.iloc[:, 1:]  # Select all rows and start from the second column
+
+            # Continue with the previous code
+            df = df._get_numeric_data().dropna(axis=0)  # Ensure only numeric data and drop rows with NaNs
+    
+            self.attribute_names = np.array(df.columns)  # get column names
             self.considered_attributes = np.ones(len(self.attribute_names)).astype(int).tolist()
-
-            # tmpdata = None
-            # try:
-            #     tmpdata = np.genfromtxt(path, skip_header=1, delimiter=',', dtype='|S5', missing_values=0).T
-            # except:
-            #     tmpdata = np.genfromtxt(path, skip_header=0, delimiter=';', dtype='|S5', missing_values=0).T
-            #     self.attribute_names = tmpdata.T[0][1:]
-            #     tmpdata = np.delete(tmpdata.T, 0)
-            #     tmpdata = tmpdata.T
-
-            # self.instance_names = tmpdata[0]
-            # datacollection = []
-            # unparasble = []
-            # for i in range(1, len(tmpdata)):
-            #     attr_column = None
-            #     try:
-            #         attr_column = tmpdata[i].astype(float)
-            #         datacollection.append(attr_column)
-            #     except:
-            #         unparasble.append(i)
-            # self.original_data = np.array(datacollection).T
-            # for i in unparasble:
-            #     self.attribute_names = np.delete(self.attribute_names, i)
-
-            for line in rawdata:
-                parts = line.rstrip().split(',')
-                self.instance_names.append(parts.pop(0))
-                self.original_data.append([float(x) for x in parts])
-            self.original_data = np.array(self.original_data)
-
+            self.instance_names = list(df.index.astype(str))  # assuming the index of df holds instance names
+            self.original_data = df.values  # store the DataFrame values in original_data
+        
             stds = np.std(self.original_data, axis=0)
             keeper = list(np.nonzero(stds)[0])
             self.attribute_names = self.attribute_names[keeper]
             self.original_data = self.original_data.T[keeper].T
-
-
 
             self.data = copy(self.original_data)
             self.label_name = self.attribute_names[self.label_index]
