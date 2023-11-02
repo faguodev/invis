@@ -10,14 +10,14 @@ from PyQt5.QtWidgets import *
 # explicitly imported "hidden imports" for pyinstaller
 #from sklearn.utils import weight_vector, lgamma
 from sklearn.metrics import pairwise_distances
-from sklearn import manifold
+from sklearn.manifold import Isomap, MDS, TSNE, LocallyLinearEmbedding
 
 # Dinos solver
 import cpca.solvers as solvers
 import cpca.skpca as skpca
 import cpca.kernel_gen as kernel_gen
 import cpca.utils as utils
-import scipy
+import pandas as pd
 
 try:
     from sklearn.utils.sparsetools import _graph_validation
@@ -29,7 +29,7 @@ except:
 class PopupSlider(QDialog):
     def __init__(self, label_text, default=4, minimum=1, maximum=20):
         QWidget.__init__(self)
-        self.slider_value = 1
+        self.slider_value = default
 
         name_label = QLabel()
         name_label.setText(label_text)
@@ -195,9 +195,9 @@ class LLE(Embedding):
             if num == '':
                 num = 4
             try:
-                lle = manifold.LocallyLinearEmbedding(n_neighbors=int(num), out_dim=2)
+                lle = LocallyLinearEmbedding(n_neighbors=int(num), out_dim=2)
             except:
-                lle = manifold.LocallyLinearEmbedding(n_neighbors=int(num), n_components=2)
+                lle = LocallyLinearEmbedding(n_neighbors=int(num), n_components=2)
             lle.fit(data)
             self.embedding = np.array(lle.transform(data))
         except Exception as e:
@@ -260,13 +260,11 @@ class ISO(Embedding):
             num = int(self.w.slider_value)
             if num == '':
                 num = 4
-            iso = manifold.Isomap(n_neighbors=int(num), n_components=2)
-            print("Computing embedding")
+            iso = Isomap(n_neighbors=num, n_components=2)
 
             self.embedding = iso.fit_transform(data)  
-            print("Done.")
-        except:
-            msg = "It seems like the embedding algorithm did not converge with the given parameter setting"
+        except Exception as e:
+            msg = "It seems like the embedding algorithm did not converge with the given parameter setting. Error: " + str(e)
             QMessageBox.about(parent, "Embedding error", msg)
 
 
@@ -300,7 +298,7 @@ class tSNE(Embedding):
                 metric = 'jaccard'
             elif m == '3':
                 metric = 'l1'            
-            tsne = manifold.TSNE(n_components=2, random_state=0, perplexity=num, metric=metric)
+            tsne = TSNE(n_components=2, random_state=0, perplexity=num, metric=metric)
             self.embedding = np.array(tsne.fit_transform(data))
         except:
             msg = "It seems like the embedding algorithm did not converge with the given parameter setting"
@@ -336,7 +334,7 @@ class MDS(Embedding):
         parent.setWindowTitle('InVis: ' + parent.data.dataset_name + ' (MDS [%s])'%m)
         dists = pairwise_distances(data, metric=m)
         dists = (dists + dists.T)/2.0
-        mds = manifold.MDS(n_components=2, dissimilarity='precomputed')
+        mds = MDS(n_components=2, dissimilarity='precomputed')
         self.embedding = mds.fit_transform(dists)
 
     def get_embedding(self):
