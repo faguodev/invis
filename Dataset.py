@@ -1,6 +1,5 @@
 #!/usr/bin/python
 import numpy as np
-import sys, os
 import pandas as pd
 from copy import copy
 from sklearn.datasets import load_svmlight_file
@@ -13,9 +12,7 @@ from unidecode import unidecode
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
-from statsmodels.tsa.ar_model import AR
 from statsmodels.tsa.arima_model import ARMA
-from utils import suppress_stdout_stderr
 
 class PopupAutocorrellationSlider(QDialog):
     def __init__(self, label_text, default=0, minimum=0, maximum=50):

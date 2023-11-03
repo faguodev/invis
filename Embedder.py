@@ -14,7 +14,6 @@ from sklearn.manifold import Isomap, MDS, TSNE, LocallyLinearEmbedding
 
 # Dinos solver
 import cpca.solvers as solvers
-import cpca.skpca as skpca
 import cpca.kernel_gen as kernel_gen
 import cpca.utils as utils
 import pandas as pd
@@ -402,9 +401,6 @@ class LSP(Embedding):
 
 
         
-        
-
-
 
 class cPCA_dummy(Embedding):
     def __init__(self, data, points, parent):

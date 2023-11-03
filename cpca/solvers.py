@@ -429,10 +429,11 @@ class rom_des_eigen_solver(object):
         self.gu_eisen_threshold = 1e+2
     
     def __inv_arg_permutation(self, arg_perm, n):
-        inv_arg_perm = range(n)
+        inv_arg_perm = list(range(n))  # Convert range to a list
         for i in range(n):
             inv_arg_perm[arg_perm[i]] = i 
         return inv_arg_perm
+
     
     def _eig_vals(self, v, diag):
         n = v.shape[0]
@@ -600,7 +601,7 @@ class quad_solver(object):
     
     def maximizer(self, eig_sys, b, r):
         top_eig_val_idx = np.argmax(eig_sys[0])
-        if b != None:
+        if b is not None:
             d = eig_sys[1].T.dot(b.reshape(-1, 1)).reshape(-1)
             gander_res = self.gander_solver.root(-1, d, eig_sys[0], r)
             if np.abs(gander_res[1][top_eig_val_idx]) > self.precision:
@@ -637,15 +638,16 @@ class greedy_dir_solver(object):
             self.eig_solver = async_rom_des_eigen_solver(precision, max_iters, mproc.cpu_count())
         else:
             self.eig_solver = rom_des_eigen_solver(precision, max_iters)
-        
+
     def _next_direction(self, quad_eig_sys, b, r, alpha=None, mu=None):
-        if alpha == None:
+        if alpha is None or (isinstance(alpha, np.ndarray) and alpha.size > 0 and np.all(alpha == None)):
             quad_res = self.quad_solver.maximizer(quad_eig_sys, b, r) 
             return (quad_res[0], quad_res[1], quad_eig_sys)
         
         rnk_one_upd_eig_sys = self.eig_solver.decompose(quad_eig_sys[0], alpha, mu)
         quad_res = self.quad_solver.maximizer(rnk_one_upd_eig_sys, b, r)
         return (quad_res[0], quad_res[1], rnk_one_upd_eig_sys)
+
     
     def from_sphere_to_ellipsoid(self, alpha, kernel_sys):
         if None != kernel_sys:
