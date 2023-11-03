@@ -89,7 +89,7 @@ class InVis(MainWindow):
             self.embedding_algorithm = MLE(self.data.data, self.control_points, self)
             self.set_xy_limits()
             self.label_updated()
-            self.point_size = np.ones(len(self.data.data))*80
+            self.point_size = np.ones(len(self.data.data))*60
             # self.splits defines a list of values where for each attribute if a value is above the value defined here, it is decretizied to be True, False otherwise
             self.splits = list(np.zeros(len(self.data.attribute_names))) 
             if not self.canvas_connected:
@@ -145,7 +145,7 @@ class InVis(MainWindow):
             self.embedding_algorithm = MLE(self.data.data, self.control_points, self)
             self.set_xy_limits()
             self.label_updated()
-            self.point_size = np.ones(len(self.data.data))*80
+            self.point_size = np.ones(len(self.data.data))*60
             self.splits = list(np.zeros(len(self.data.attribute_names)))
             if not self.canvas_connected:
                 self.connect_canvas()

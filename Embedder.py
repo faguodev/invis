@@ -592,7 +592,8 @@ class MLE(Embedding):
 
 
     def get_embedding(self, X=[]):
-        if X == []:
+        if (isinstance(X, list) and not X) or (isinstance(X, np.ndarray) and X.size == 0):
+            # Handle empty list
             X=self.data.T
         self.projection_matrix = self.M
         return self.M.dot(X)

@@ -78,7 +78,7 @@ class MainWindow(QMainWindow):
         self.unclipped_original_data = None
         self.unclipped_instance_names = None
         self.saved_control_points = {}
-        self.point_size = 80
+        self.point_size = 60
         self.point_size_is_set_variable = False
         self.dummies = []
 
@@ -685,7 +685,7 @@ class MainWindow(QMainWindow):
                 self.point_size = labels
             else:
                 self.point_size_is_set_variable = False
-                self.point_size = np.ones(len(self.data.data))*80
+                self.point_size = np.ones(len(self.data.data))*60
             self.update()
 
 
@@ -1481,8 +1481,11 @@ class MainWindow(QMainWindow):
         self.info_requests = []
         self.highlighted = []
         self.search_text_field.setText("")
-        if self.data.data != []:
+        if isinstance(self.data.data, list) and self.data.data:
             self.update()
+        elif isinstance(self.data.data, np.ndarray) and self.data.data.size != 0:
+            self.update()
+
 
 
     def update(self):
