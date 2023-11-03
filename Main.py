@@ -143,10 +143,10 @@ class InVis(MainWindow):
             self.fill_attribute_list(self.data.attribute_names)
             self.label_text_field.setText(self.data.label_name)
             self.embedding_algorithm = MLE(self.data.data, self.control_points, self)
-            self.set_xy_limits()
-            self.label_updated()
             self.point_size = np.ones(len(self.data.data))*60
             self.splits = list(np.zeros(len(self.data.attribute_names)))
+            self.set_xy_limits()
+            self.label_updated()
             if not self.canvas_connected:
                 self.connect_canvas()
 
