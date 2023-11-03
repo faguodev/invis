@@ -166,19 +166,6 @@ class InVis(MainWindow):
         """ Export frequent patterns """
         if self.data != None:
 
-
-            # print(len(self.data.data))
-            # write self.data.data to ./data/data-test.txt
-            """ import csv
-
-            f = open("./data/data-test.csv", "w")
-        
-            writer = csv.writer(f)
-            for i in range(len(self.data.data)):
-
-                writer.writerow(self.data.data[i]) """
-
-
             self.update_status_bar('Mining & exporting patterns')
             representation, ok = QInputDialog.getText(self, 'Pattern representation', 'Represent the patterns via extention <e>, or intention <i>? (default is intention)')
             if not representation in ['e', 'i']:
@@ -219,19 +206,20 @@ class InVis(MainWindow):
             except:
                 top_k = 500
             filename, _ = QFileDialog.getSaveFileName(self, "Export to", "")
-            if self.discretization_type == None:
-                self.generate_discretization_splits()
-            iMiner = ItemsetMiner(self.data, self.splits, 1, 1, 50, range(len(self.data.data)), self.show_ignored_attributes)
-            transactions = iMiner.build_itemsets(constraint='0')
-            patterns = iMiner.get_frequent_itemsets(transactions, 'c', top_k=top_k)
-            if representation == 'i':
-                out = iMiner.export_patterns(patterns, 'Support')
-            else:
-                out = iMiner.export_patterns_extension_representation(patterns, 'Support')
-            f = open(filename, 'w')
-            f.write(out)
-            f.close()
-            self.update_status_bar('Done mining & exporting patterns')
+            if filename:
+                if self.discretization_type == None:
+                    self.generate_discretization_splits()
+                iMiner = ItemsetMiner(self.data, self.splits, 1, 1, 50, range(len(self.data.data)), self.show_ignored_attributes)
+                transactions = iMiner.build_itemsets(constraint='0')
+                patterns = iMiner.get_frequent_itemsets(transactions, 'c', top_k=top_k)
+                if representation == 'i':
+                    out = iMiner.export_patterns(patterns, 'Support')
+                else:
+                    out = iMiner.export_patterns_extension_representation(patterns, 'Support')
+                f = open(filename, 'w')
+                f.write(out)
+                f.close()
+                self.update_status_bar('Done mining & exporting patterns')
 
 
     def export_subgroup(self):
@@ -247,18 +235,19 @@ class InVis(MainWindow):
             except:
                 top_k = 100
             filename, _ = QFileDialog.getSaveFileName(self, "Export to", "")
-            if self.discretization_type == None:
-                self.generate_discretization_splits()
-            iMiner = ItemsetMiner(self.data, self.splits, 2, 1, 5, range(len(self.data.data)), self.show_ignored_attributes)
-            patterns = iMiner.get_subgroups(top_k=top_k)
-            if representation == 'i':
-                out = iMiner.export_patterns(patterns, 'Quality')
-            else:
-                out = iMiner.export_patterns_extension_representation(patterns, 'Quality')
-            f = open(filename, 'w')
-            f.write(out)
-            f.close()
-            self.update_status_bar('Done mining & exporting patterns')
+            if filename:
+                if self.discretization_type == None:
+                    self.generate_discretization_splits()
+                iMiner = ItemsetMiner(self.data, self.splits, 2, 1, 5, range(len(self.data.data)), self.show_ignored_attributes)
+                patterns = iMiner.get_subgroups(top_k=top_k)
+                if representation == 'i':
+                    out = iMiner.export_patterns(patterns, 'Quality')
+                else:
+                    out = iMiner.export_patterns_extension_representation(patterns, 'Quality')
+                f = open(filename, 'w')
+                f.write(out)
+                f.close()
+                self.update_status_bar('Done mining & exporting patterns')
 
 
     def export_relevant(self):
@@ -274,18 +263,19 @@ class InVis(MainWindow):
             except:
                 top_k = 100
             filename, _ = QFileDialog.getSaveFileName(self, "Export to", "")
-            if self.discretization_type == None:
-                self.generate_discretization_splits()
-            iMiner = ItemsetMiner(self.data, self.splits, 1, 1, 50, range(len(self.data.data)), self.show_ignored_attributes)
-            patterns = iMiner.get_delta_relevant_itemsets(1, 'absolute', top_k=top_k)
-            if representation == 'i':
-                out = iMiner.export_patterns(patterns, 'Quality')
-            else:
-                out = iMiner.export_patterns_extension_representation(patterns, 'Quality')
-            f = open(filename, 'w')
-            f.write(out)
-            f.close()
-            self.update_status_bar('Done mining & exporting patterns')
+            if filename:
+                if self.discretization_type == None:
+                    self.generate_discretization_splits()
+                iMiner = ItemsetMiner(self.data, self.splits, 1, 1, 50, range(len(self.data.data)), self.show_ignored_attributes)
+                patterns = iMiner.get_delta_relevant_itemsets(1, 'absolute', top_k=top_k)
+                if representation == 'i':
+                    out = iMiner.export_patterns(patterns, 'Quality')
+                else:
+                    out = iMiner.export_patterns_extension_representation(patterns, 'Quality')
+                f = open(filename, 'w')
+                f.write(out)
+                f.close()
+                self.update_status_bar('Done mining & exporting patterns')
 
 
 
