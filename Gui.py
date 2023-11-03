@@ -1061,29 +1061,22 @@ class MainWindow(QMainWindow):
         self.axes.figure.canvas.widgetlock.release(self.lasso)
 
 
-    # TODO: This code looks a bit iffy
     def generate_discretization_splits(self):
         if self.data != None:
             self.discretization_type, ok = QInputDialog.getText(self, 'Discretization', 'Enter number of the desired discretization method:\n1) True if value > 0 (Default)\n2) True if value > average\n3) True if value > median\n4) True if value > half range\n5) True if value > average + 1*std')
             if self.discretization_type in ['1', '']:
                 self.splits = list(np.zeros(len(self.data.attribute_names)))
             elif  self.discretization_type == '2':
-                self.splits = []
-                for name in self.data.attribute_names:
-                    self.splits = list(np.average(self.data.data, axis=0))
+                self.splits = list(np.average(self.data.data, axis=0))
             elif  self.discretization_type == '3':
-                self.splits = []
-                for name in self.data.attribute_names:
-                    self.splits = list(np.median(self.data.data, axis=0))
+                self.splits = list(np.median(self.data.data, axis=0))
             elif  self.discretization_type == '4':
                 self.splits = []
                 for name in self.data.attribute_names:
                     min_val, max_val = self.data.get_range(name)
                     self.splits.append((max_val-min_val)/2.0)
             elif  self.discretization_type == '5':
-                self.splits = []
-                for name in self.data.attribute_names:
-                    self.splits = list(np.average(self.data.data, axis=0) + np.std(self.data.data, axis=0))
+                self.splits = list(np.average(self.data.data, axis=0) + np.std(self.data.data, axis=0))
 
 
 
