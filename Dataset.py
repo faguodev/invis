@@ -380,17 +380,15 @@ class Dataset():
             self.label_name = None
         else:
             self.database_type = 'DATA'
-            df = pd.read_csv(path, sep=None, engine="python")
+            df = pd.read_csv(path, sep=None, engine="python").dropna(axis=0)
+
+            # Get the values of the first column for instance names
+            self.instance_names = list(df.iloc[:, 0].astype(str))  # assuming the first column of df holds instance names
 
             # Drop the first column, regardless of its content
             df = df.iloc[:, 1:]  # Select all rows and start from the second column
-
-            # Continue with the previous code
-            df = df._get_numeric_data().dropna(axis=0)  # Ensure only numeric data and drop rows with NaNs
-    
             self.attribute_names = np.array(df.columns)  # get column names
             self.considered_attributes = np.ones(len(self.attribute_names)).astype(int).tolist()
-            self.instance_names = list(df.index.astype(str))  # assuming the index of df holds instance names
             self.original_data = df.values  # store the DataFrame values in original_data
         
             stds = np.std(self.original_data, axis=0)
