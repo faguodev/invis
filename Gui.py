@@ -1377,6 +1377,7 @@ class MainWindow(QMainWindow):
             self.embedding_algorithm.finished_relocating()
             self.selected_point = None
             self.update()
+        self.update()
         
 
     def lasso_callback(self, verts):
@@ -1503,9 +1504,10 @@ class MainWindow(QMainWindow):
                 self.colors = np.zeros(len(self.data.data))
                 for highlight in self.searched_results:
                     self.colors[highlight] = 1.0
-            self.scatter_plot = self.axes.scatter(self.embedding[0], self.embedding[1], color=pl.get_cmap(self.color_scheme)(self.colors), picker=self.pick_sensitivity, edgecolor=(0.3,0.3,0.3,0.2), s=self.point_size, zorder=2, alpha=self.opacity)
+            # this [0] should circumvent the problem that vectors need to be equal length, but could later cause problems if for some reason the point_size is not a list
+            self.scatter_plot = self.axes.scatter(self.embedding[0], self.embedding[1], color=pl.get_cmap(self.color_scheme)(self.colors), picker=self.pick_sensitivity, edgecolor=(0.3,0.3,0.3,0.2), s=self.point_size[0], zorder=2, alpha=self.opacity)
         else:
-            self.scatter_plot = self.axes.scatter(self.embedding[0], self.embedding[1], facecolor='none', picker=self.pick_sensitivity, edgecolor=(0.3,0.3,0.3,0.2), s=self.point_size, zorder=2, alpha=self.opacity)
+            self.scatter_plot = self.axes.scatter(self.embedding[0], self.embedding[1], facecolor='none', picker=self.pick_sensitivity, edgecolor=(0.3,0.3,0.3,0.2), s=self.point_size[0], zorder=2, alpha=self.opacity)
             for i, txt in enumerate(self.data.instance_names):
                 self.axes.annotate(txt, (self.embedding[0][i], self.embedding[1][i]), alpha=0.5)
         if self.show_singletons:
@@ -1523,7 +1525,7 @@ class MainWindow(QMainWindow):
             control_point_indices = list(self.control_points.keys())
             self.axes.scatter(self.embedding[0][control_point_indices], self.embedding[1][control_point_indices], color='k', s=self.point_size[control_point_indices]+40, facecolor='none', edgecolor=self.control_point_color[self.color_scheme], linewidth=4, zorder=100)
         if len(self.lassoed_points) > 0:
-            self.axes.scatter(self.embedding[0][self.lassoed_points], self.embedding[1][self.lassoed_points], color='k', s=self.point_size[self.lassoed_points], facecolor='none', edgecolor='k', linewidth=2, zorder=10, alpha=0.3)
+            self.axes.scatter(self.embedding[0][self.lassoed_points], self.embedding[1][self.lassoed_points], color='k', s=self.point_size[0], facecolor='none', edgecolor='k', linewidth=2, zorder=10, alpha=0.3)
             if self.path != None:
                 self.axes.add_patch(patches.PathPatch(self.path, color='k', lw=0, alpha=0.2, zorder=0))
         if self.show_links:
