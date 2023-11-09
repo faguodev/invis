@@ -1077,7 +1077,7 @@ class MainWindow(QMainWindow):
         import matplotlib.image as mplimg
         import pydotplus
         from PIL import Image
-        from sklearn import cross_validation, tree
+        from sklearn import model_selection, tree
         from io import StringIO
 
         attributes = [i for i,name in enumerate(self.data.attribute_names) if name not in self.data.ignored_attributes]
@@ -1092,7 +1092,7 @@ class MainWindow(QMainWindow):
         tree.export_graphviz(clf, out_file=dotfile, feature_names=attribute_names, impurity=False, class_names=['Not-Selected', 'Selected'], filled=True, rounded=True)
         graph = pydotplus.graph_from_dot_data(dotfile.getvalue())
 
-        acc = "Accuracy\n%.2f%%" %(abs(cross_validation.cross_val_score(clf, X, Y, scoring='accuracy', cv=10).mean())*100.)
+        acc = "Accuracy\n%.2f%%" %(abs(model_selection.cross_val_score(clf, X, Y, scoring='accuracy', cv=10).mean())*100.)
         node_a = pydotplus.Node(label=acc, style="filled", shape='note', fillcolor='yellow')
         graph.add_node(node_a)
 
