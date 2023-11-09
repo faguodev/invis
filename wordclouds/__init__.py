@@ -91,10 +91,11 @@ def fit_words(words, font_path=None, width=400, height=200,
             transposed_font = ImageFont.TransposedFont(font, orientation=orientation)
             draw.font = transposed_font
             # get size of resulting text
-            box_size = draw.textsize(word)
+            bbox_left, bbox_top, bbox_right, bbox_bottom = draw.textbbox((0,0), word)
+            bbox_width, bbox_height = bbox_right - bbox_left, bbox_bottom - bbox_top
             # find possible places using integral image:
-            result = query_integral_image(integral, box_size[1] + margin,
-                                          box_size[0] + margin)
+            result = query_integral_image(integral, bbox_height + margin,
+                                          bbox_width + margin)
             if result is not None or font_size == 0:
                 break
             # if we didn't find a place, make font smaller

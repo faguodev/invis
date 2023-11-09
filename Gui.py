@@ -1050,17 +1050,6 @@ class MainWindow(QMainWindow):
             self.update()
 
 
-    def lasso_callback(self, verts):
-        """ Finds all points inside the lasso-selected area """
-        self.path = matplotlib.path.Path(verts)
-        ind = np.nonzero([self.path.contains_point(xy) for xy in self.embedding.T])[0]
-        self.lassoed_points = ind
-        if len(self.lassoed_points) > 1:
-            self.image_displayer()
-            self.center_ind = self.get_geometric_median_index_of_index_set(self.lassoed_points)
-        self.axes.figure.canvas.widgetlock.release(self.lasso)
-
-
     def generate_discretization_splits(self):
         if self.data != None:
             self.discretization_type, ok = QInputDialog.getText(self, 'Discretization', 'Enter number of the desired discretization method:\n1) True if value > 0 (Default)\n2) True if value > average\n3) True if value > median\n4) True if value > half range\n5) True if value > average + 1*std')
@@ -1372,8 +1361,6 @@ class MainWindow(QMainWindow):
         if event.inaxes is None: return
         if self.axes.figure.canvas.widgetlock.locked(): return
         if self.control_click or self.lasso_request:
-            # THIS HAS TO OCCURR TWICE DUE TO SOME BUG IN THE CALLBACK FUNCTION
-            self.lasso = Lasso(event.inaxes, (event.xdata, event.ydata), self.lasso_callback)
             self.lasso = Lasso(event.inaxes, (event.xdata, event.ydata), self.lasso_callback)
             self.axes.figure.canvas.widgetlock(self.lasso)
             self.lassoLock = True
@@ -1385,13 +1372,24 @@ class MainWindow(QMainWindow):
         if self.lassoLock:
             self.axes.figure.canvas.widgetlock.release(self.lasso)
             self.lassoLock = False
-            self.lasso = None
             self.lasso_button.setIcon(QIcon(os.path.join(self.cwd,"lasso.png")))
         if self.selected_point != None:
             self.embedding_algorithm.finished_relocating()
             self.selected_point = None
-        self.update()
+            self.update()
+        
 
+    def lasso_callback(self, verts):
+        """ Finds all points inside the lasso-selected area """
+        self.path = matplotlib.path.Path(verts)
+        ind = np.nonzero([self.path.contains_point(xy) for xy in self.embedding.T])[0]
+        self.lassoed_points = ind
+        if len(self.lassoed_points) > 1:
+            self.image_displayer()
+            self.center_ind = self.get_geometric_median_index_of_index_set(self.lassoed_points)
+        self.axes.figure.canvas.widgetlock.release(self.lasso)
+        del self.lasso
+        self.update()
 
     def on_key_press(self, event):
         """ On key press """
@@ -1521,13 +1519,11 @@ class MainWindow(QMainWindow):
                 for s in sorting[:5]:
                     x,y = dummy_embedding.T[s]
                     self.axes.annotate(attr_names[s], (x, y), alpha=0.6, fontsize=14,color='k')
-        # TODO check if .keys() has an issue here
         if len(self.control_points.keys()) > 0:
-            # TODO check if .keys() has an issue here
             control_point_indices = list(self.control_points.keys())
             self.axes.scatter(self.embedding[0][control_point_indices], self.embedding[1][control_point_indices], color='k', s=self.point_size[control_point_indices]+40, facecolor='none', edgecolor=self.control_point_color[self.color_scheme], linewidth=4, zorder=100)
         if len(self.lassoed_points) > 0:
-            self.axes.scatter(self.embedding[0][self.lassoed_points], self.embedding[1][self.lassoed_points], color='k', s=self.point_size, facecolor='none', edgecolor='k', linewidth=2, zorder=10, alpha=0.3)
+            self.axes.scatter(self.embedding[0][self.lassoed_points], self.embedding[1][self.lassoed_points], color='k', s=self.point_size[self.lassoed_points], facecolor='none', edgecolor='k', linewidth=2, zorder=10, alpha=0.3)
             if self.path != None:
                 self.axes.add_patch(patches.PathPatch(self.path, color='k', lw=0, alpha=0.2, zorder=0))
         if self.show_links:

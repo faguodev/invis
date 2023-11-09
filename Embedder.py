@@ -452,9 +452,10 @@ class cPCA(Embedding):
         self.is_dynamic = True 
         self.old_control_point_indices = []
 
+        # r = radius? slv_mode: type of solver, 
         self.params = {'r' : 3.0, 'slv_mode' : 'secular', 'sigma' : None, 'epsilon' : 0.5, 'degree' : 1}
-        self.params['const_nu'] = 5e+3
-        self.params['orth_nu'] = 5e+3
+        self.params['const_nu'] = 5e+3 # constraint parameter?
+        self.params['orth_nu'] = 5e+3 # orthogonality parameter?
         self.params['sigma'] = utils.median_pairwise_distances(data)
         gk = kernel_gen.gaussian_kernel()
         # gk = kernel_gen.polynomial_kernel()
