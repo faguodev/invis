@@ -282,7 +282,7 @@ class MainWindow(QMainWindow):
                 self.ml_cl_button.setIcon(QIcon(os.path.join(self.cwd,"ml.png")))
             elif self.ml_cl_state == 'ML':
                 self.ml_cl_state = 'CL'
-                self.ml_cl_button.setIcon(QIcon(os.path.join(self.cwd,"/cl.png")))
+                self.ml_cl_button.setIcon(QIcon(os.path.join(self.cwd,"cl.png")))
             elif self.ml_cl_state == 'CL':
                 self.ml_cl_state = None
                 self.ml_cl_button.setIcon(QIcon(os.path.join(self.cwd,"ml_cl.png")))
