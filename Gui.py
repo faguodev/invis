@@ -526,7 +526,7 @@ class MainWindow(QMainWindow):
         if self.data != None:
             self.ml_cl_state = None
             if self.ml_cl_available:
-                self.ml_cl_button.setIcon(os.path.join(self.cwd,"ml_cl.png"))
+                self.ml_cl_button.setIcon(QIcon(os.path.join(self.cwd,"ml_cl.png")))
             else:
                 self.ml_cl_button.setIcon(QIcon(os.path.join(self.cwd,"ml_cl_unavailable.png")))
             self.pairwise_link_marker = 0
@@ -1523,7 +1523,7 @@ class MainWindow(QMainWindow):
                     self.axes.annotate(attr_names[s], (x, y), alpha=0.6, fontsize=14,color='k')
         if len(self.control_points.keys()) > 0:
             control_point_indices = list(self.control_points.keys())
-            self.axes.scatter(self.embedding[0][control_point_indices], self.embedding[1][control_point_indices], color='k', s=self.point_size[control_point_indices]+40, facecolor='none', edgecolor=self.control_point_color[self.color_scheme], linewidth=4, zorder=100)
+            self.axes.scatter(self.embedding[0][control_point_indices], self.embedding[1][control_point_indices], color='k', s=self.point_size[0]+40, facecolor='none', edgecolor=self.control_point_color[self.color_scheme], linewidth=4, zorder=100)
         if len(self.lassoed_points) > 0:
             self.axes.scatter(self.embedding[0][self.lassoed_points], self.embedding[1][self.lassoed_points], color='k', s=self.point_size[0], facecolor='none', edgecolor='k', linewidth=2, zorder=10, alpha=0.3)
             if self.path != None:
@@ -1534,7 +1534,7 @@ class MainWindow(QMainWindow):
             for link in self.cannot_link:
                 self.axes.plot(self.embedding[0][list(link)], self.embedding[1][list(link)], 'r:', alpha=0.5)
         if self.ml_cl_pending:
-            self.axes.scatter(self.embedding[0][self.ml_cl_index], self.embedding[1][self.ml_cl_index], color='k', s=self.point_size, facecolor='none', edgecolor='k', linewidth=5, zorder=200, alpha=0.3)
+            self.axes.scatter(self.embedding[0][self.ml_cl_index], self.embedding[1][self.ml_cl_index], color='k', s=self.point_size[0], facecolor='none', edgecolor='k', linewidth=5, zorder=200, alpha=0.3)
         self.draw_search_annotations()
         self.draw_info_annotations()
         self.highlight_center_data_record()
