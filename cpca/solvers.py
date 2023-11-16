@@ -777,6 +777,7 @@ class embedder(object):
         else:
             self.eig_solver = rom_des_eigen_solver(precision, max_iters)
         
+    # this seems to calculate the eigendecomposition, the square root, and its inverse of the kernel matrix 
     def kernel_sys(self, K):
         eigvals, eigvecs = np.linalg.eigh(K)
         min_real = float(min(np.real(eigvals)))
@@ -798,6 +799,7 @@ class embedder(object):
         sqrt_inv_mat = (eigvecs * sqrt_inv_diag).dot(eigvecs.T)
         return (K, sqrt_mat, sqrt_inv_mat, eigvals, eigvecs)
     
+    # this seems to calculate the eigendecomposition of the variance term
     def sph_cl_var_term_eig_sys(self, kernel_sys):
         n = kernel_sys[0].shape[0]
         #H = np.identity(n) - float(1.0 / n)# * np.ones((n, n))
@@ -826,6 +828,9 @@ class embedder(object):
         svt_eig_vals, svt_eig_vecs = np.linalg.eigh(sph_var_term - reg_block)
         return (svt_eig_vals, svt_eig_vecs)
     
+    # this seems to be important
+    # calculates maybe some quadratic term that has something to do with the control points
+    # cp = control points
     def sph_cp_quad_term_eig_sys(self, kernel_sys, quad_eig_sys, new_cp_idx, mu):
         v = kernel_sys[2].dot(kernel_sys[0][:, new_cp_idx])
         eig_vec_seq = []
@@ -929,6 +934,7 @@ class embedder(object):
         sph_kb_terms = self.__interpret_cl_constraint(kernel_sys, labels, label_mask, params)
         return self.direction_solver.hard_orth_directions(kernel_sys, sph_quad_eig_sys, -0.5 * sph_kb_terms[1], params['r'], params['dim'])
     
+    # this seems to be important, does the actual optimization
     def soft_cp_mode_directions(self, sph_quad_eig_sys, label_mask, y, kernel_sys, params, const_nu):
         dim = y.shape[1]
         orth_nu = self.orth_nu(params, dim, kernel_sys)
@@ -947,6 +953,7 @@ class embedder(object):
         l = label_mask.shape[0]
         return float((params['const_nu'] * n) / l)
     
+    # calculates d = K^-1/2 * b
     def __interpret_cp_lin_constraint(self, kernel_sys, y, label_mask, const_nu):
         lab_sub_K = kernel_sys[0][label_mask, :]
         ellipsoid_lin_term = -2 * const_nu * lab_sub_K.T.dot(y)
