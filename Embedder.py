@@ -18,6 +18,9 @@ import cpca.kernel_gen as kernel_gen
 import cpca.utils as utils
 import pandas as pd
 
+import warnings
+from scipy import linalg
+
 try:
     from sklearn.utils.sparsetools import _graph_validation
     from sklearn.neighbors import typedefs
@@ -427,6 +430,114 @@ class cPCA_dummy(Embedding):
 
         
         
+class ConstrainedKPCAIterative(Embedding):
+    # points here is a predefined dictionary of control points. That's why update control points is called in the init part
+    def __init__(self, data, points, parent):
+        # general initialization
+        self.data = data
+        self.n = len(data)
+        self.control_points = []
+        self.control_point_indices = []
+        self.parent = parent
+        self.X = None
+        self.Y = np.array([])
+        self.projection_matrix = np.zeros((2, len(self.data[0])))
+        self.name = ''
+        self.is_dynamic = False
+
+        # Must link canont link
+        self.ml = []
+        self.cl = []
+        self.has_ml_cl_constraints = False
+
+        # Algorithm details
+        self.name = "cKPCA_iterative"
+        self.is_dynamic = True 
+        
+        # control points
+        self.cp_selector_m_by_n = np.zeros((len(points), self.n))
+        self.cp_selector_n_by_n = np.zeros((self.n, self.n)) 
+        self.old_control_point_indices = []
+        
+        # constraint parameter, orthagonality parameter
+        # TODO: adjust the parameters, maybe reuse the orth_nu and const_nu functions from dinos solver
+        self.params = {'const_nu' : 5e+3, 'orth_nu' : 5e+4, 'learning_rate' : 1e-3, 'iterations' : 1000}
+        self.params['sigma'] = utils.median_pairwise_distances(data)
+
+        # kernel (this uses scipy.linalg.sqrtm for the square root of the kernel matrix)
+        kernel = kernel_gen.gaussian_kernel()
+        self.K = kernel.compute_matrix(data, self.params)
+        self.K_sqrt, self.K_sqrt_inv = utils.construct_kernel_sys(self.K)
+        
+        self.update_control_points(points)
+
+    # resposible for getting the already calculated embedding
+    def get_embedding(self, X=None):
+        return self.projection_matrix @ self.K
+
+    # points seems to be a dictionary of pointindices and their xy coordinates
+    def update_control_points(self, points):
+        super(ConstrainedKPCAIterative, self).update_control_points(points)
+        
+        if set(self.control_point_indices) != self.old_control_point_indices:
+           self.cp_selector_m_by_n, self.cp_selector_n_by_n = utils.construct_cp_selector_matrices(self.n, self.control_point_indices)
+
+        alpha_1 = self.iterative_solver(None, 0)
+        alpha_2 = self.iterative_solver(alpha_1, 1)
+
+        self.projection_matrix = np.vstack((alpha_1, alpha_2))
+
+        self.old_control_point_indices = set(self.control_point_indices)
+
+    def orth_nu(self):
+        # that differs from the dinos solver in the sign
+        # But should be fine as dinos solver handles the sign of orth_nu and const_nu differently
+        return float((self.n * self.params['orth_nu']) / float(2))
+    
+    def const_nu(self):
+        l = 1
+        if len(self.control_point_indices) > 0:
+            l = len(self.control_point_indices)
+        return float((self.params['const_nu'] * self.n) / l)
+
+    def iterative_solver(self, alpha, dimension):
+        # compute W
+        H = np.eye(self.n) - (1.0 / self.n) * np.ones((self.n, self.n))
+
+        W = (1 / self.n) * H
+
+        const_mu = self.const_nu()
+        orth_mu = self.orth_nu()
+
+        if len(self.control_point_indices) > 0:
+            W = W - const_mu / len(self.control_point_indices) * self.cp_selector_n_by_n
+
+        print(alpha)
+        print(orth_mu)
+        if alpha is not None:
+            W = W - orth_mu * np.outer(alpha, alpha)
+
+        # compute C
+        C = self.K_sqrt @ W @ self.K_sqrt
+
+        # compute d
+        d = 0 
+        
+        if len(self.control_point_indices) > 0:
+            Y_s = self.Y[:, dimension]
+            d = -1 * const_mu / len(self.control_point_indices) * Y_s.T @ self.cp_selector_m_by_n @ self.K_sqrt
+
+        # initialize v
+        v = np.random.rand(self.n)
+
+        for i in range(self.params['iterations']):
+            v = v + self.params['learning_rate'] * (C @ v - d)
+            v = v / np.linalg.norm(v)
+
+        alpha_s = self.K_sqrt_inv @ v
+        return alpha_s
+
+
 
 
 
@@ -452,7 +563,7 @@ class cPCA(Embedding):
         self.is_dynamic = True 
         self.old_control_point_indices = []
 
-        # r = radius? slv_mode: type of solver, 
+        # r = radius? slv_mode: type of solver, sigma, degree, epsilon are parameters for the kernel
         self.params = {'r' : 3.0, 'slv_mode' : 'secular', 'sigma' : None, 'epsilon' : 0.5, 'degree' : 1}
         self.params['const_nu'] = 5e+3 # constraint parameter?
         self.params['orth_nu'] = 5e+3 # orthogonality parameter?
@@ -490,6 +601,7 @@ class cPCA(Embedding):
         return self.pca_projection.T
 
 
+    # this seems to be responsible for doing the actual calculation fo the directions
     def finished_relocating(self):
         if len(self.control_point_indices) > 0:
             directions = self.embedder.soft_cp_mode_directions(self.quad_eig_sys, self.control_point_indices, self.Y, self.kernel_sys, self.params, self.const_mu)
@@ -497,6 +609,8 @@ class cPCA(Embedding):
         return self.pca_projection
 
 
+    # points seems to be a dictionary of pointindices and their xy coordinates
+    # this seems to only be responible for adjustments when control points are added or removed
     def update_control_points(self, points):
         super(cPCA, self).update_control_points(points)
         if len(self.control_point_indices) > len(self.old_control_point_indices):

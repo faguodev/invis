@@ -456,3 +456,41 @@ def planar_class_embedding(X, y, labelled_idxs, path):
         plt.plot(x_coord, y_coord, marker=__choose_marker(i, labelled_idxs, y[i, 0]), color='r' if y[i, 0] == 1 else 'b', markersize=3)
     plt.savefig(path, dpi = 200)    
     plt.close()
+
+# Florians code below
+
+def construct_cp_selector_matrices(n, indices):
+    # Length of the indices list
+    m = len(indices)
+
+    # First matrix: m x n
+    m_matrix = np.zeros((m, n))
+    m_matrix[np.arange(m), indices] = 1
+
+    # Second matrix: n x n
+    n_matrix = np.zeros((n, n))
+    n_matrix[indices, indices] = 1
+
+    return m_matrix, n_matrix
+
+def construct_kernel_sys(K):
+    eigvals, eigvecs = np.linalg.eigh(K)
+    min_real = float(min(np.real(eigvals)))
+    max_real = np.abs(max(np.real(eigvals)))
+    mat_cond_num = max_real / np.abs(min_real)
+    if mat_cond_num > 1e+6:
+        warnings.warn('WARNING: The kernel matrix K is poorly conditioned --- cond_num = ' + str(mat_cond_num) + '. Addding noise to the diagonal...')
+        eigvals = eigvals + 2.56e-8
+    elif min_real <= 0:
+        warnings.warn('WARNING: Numerically unstable eigendecomposition of p.d. matrix K --- min_eigen_val = ' + str(min_real) + '. Addding noise to diagonal...') 
+        eigvals = eigvals + np.abs(min_real) + 2.56e-8
+    
+    sqrt_eig_vals = np.sqrt(eigvals)
+    sqrt_inv_diag = 1.0 / sqrt_eig_vals
+    
+    sqrt_eig_vals = np.diag(sqrt_eig_vals)
+    sqrt_inv_diag = np.diag(sqrt_inv_diag)
+
+    sqrt_mat = eigvecs @ sqrt_eig_vals @ eigvecs.T
+    sqrt_inv_mat = eigvecs @ sqrt_inv_diag @ eigvecs.T
+    return (sqrt_mat, sqrt_inv_mat)
