@@ -461,14 +461,14 @@ class ConstrainedKPCAIterative(Embedding):
         
         # constraint parameter, orthagonality parameter
         # TODO: adjust the parameters, maybe reuse the orth_nu and const_nu functions from dinos solver
-        self.params = {'const_nu' : 5e+3, 'orth_nu' : 5e+4, 'learning_rate' : 1e-3, 'iterations' : 1000}
+        self.params = {'const_nu' : 5e+3, 'orth_nu' : 5e+3, 'learning_rate' : 1e-3, 'iterations' : 1000, 'tolerance' : 1e-6}
         self.params['sigma'] = utils.median_pairwise_distances(data)
 
         # kernel (this uses scipy.linalg.sqrtm for the square root of the kernel matrix)
         kernel = kernel_gen.gaussian_kernel()
         self.K = kernel.compute_matrix(data, self.params)
         self.K_sqrt, self.K_sqrt_inv = utils.construct_kernel_sys(self.K)
-        
+
         self.update_control_points(points)
 
     # resposible for getting the already calculated embedding
@@ -506,16 +506,18 @@ class ConstrainedKPCAIterative(Embedding):
 
         W = (1 / self.n) * H
 
-        const_mu = self.const_nu()
-        orth_mu = self.orth_nu()
+        #const_mu = self.const_nu()
+        #orth_mu = self.orth_nu()
+
+        const_mu = 1
+        orth_mu = 1
+
+
+        if alpha is not None:
+            W = W - orth_mu * np.outer(alpha, alpha)
 
         if len(self.control_point_indices) > 0:
             W = W - const_mu / len(self.control_point_indices) * self.cp_selector_n_by_n
-
-        print(alpha)
-        print(orth_mu)
-        if alpha is not None:
-            W = W - orth_mu * np.outer(alpha, alpha)
 
         # compute C
         C = self.K_sqrt @ W @ self.K_sqrt
@@ -530,11 +532,22 @@ class ConstrainedKPCAIterative(Embedding):
         # initialize v
         v = np.random.rand(self.n)
 
-        for i in range(self.params['iterations']):
-            v = v + self.params['learning_rate'] * (C @ v - d)
-            v = v / np.linalg.norm(v)
+        iteration = 0
+
+        while True:
+            iteration += 1
+            v_new = v + self.params['learning_rate'] * (C @ v - d)
+            v_new = v_new / np.linalg.norm(v_new)
+            if np.linalg.norm(v_new - v) < self.params['tolerance']:
+                break
+            if iteration % 100 == 0:
+                print("Iteration: ", iteration)
+                print("Norm: ", np.linalg.norm(v_new - v))
+            v = v_new
 
         alpha_s = self.K_sqrt_inv @ v
+        print("alpha_s")
+        print(alpha_s)
         return alpha_s
 
 
