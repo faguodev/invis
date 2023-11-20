@@ -4,7 +4,7 @@ Created on Nov 18, 2013
 @author: doglic
 '''
 
-import numpy as np
+import cupy as np
 import scipy.optimize as scopt
 import sys
 

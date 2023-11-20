@@ -4,7 +4,7 @@ Created on Jan 6, 2014
 @author: doglic
 '''
 
-import numpy as np
+import cupy as np
 from . import comparable as comp
 import warnings
 

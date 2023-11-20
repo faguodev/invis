@@ -3,7 +3,7 @@ Created on May 14, 2013
 
 @author: doglic
 '''
-import numpy as np
+import cupy as np
 import sys
 import scipy.spatial.distance as dist
 
@@ -70,7 +70,7 @@ class cos_linear_kernel(polynomial_kernel):
 
 class gaussian_kernel(kernel_functional):
     def compute_matrix(self, points, params={'sigma' : 1.0}):
-        euclidean_distances = dist.squareform(dist.pdist(points, 'euclidean'))
+        euclidean_distances = np.asarray(dist.squareform(dist.pdist(points, 'euclidean')))
         gauss_distances = np.exp(-(euclidean_distances**2) / (2 * params['sigma']**2))
         return gauss_distances
 

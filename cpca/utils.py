@@ -12,7 +12,7 @@ import scipy.spatial.distance as dist
 #import os
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-import numpy as np
+import cupy as np
 import multiprocessing as mproc
 import logging
 from logging import handlers
@@ -402,17 +402,17 @@ def largest_mst_weigth(data, incid_vec):
 
 def mean_pairwise_distance(X):
     euclidean_distances = dist.squareform(dist.pdist(X, 'euclidean'))
-    return np.mean(euclidean_distances)
+    return np.mean(np.asarray(euclidean_distances))
 
 
 def median_pairwise_distances(X):
     euclidean_distances = dist.squareform(dist.pdist(X, 'euclidean'))
-    return np.median(euclidean_distances)
+    return np.median(np.asarray(euclidean_distances))
 
 
 def std_of_pairwise_distances(X):
     euclidean_distances = dist.squareform(dist.pdist(X, 'euclidean'))
-    return np.std(euclidean_distances)
+    return np.std(np.asarray(euclidean_distances))
 
 
 def top_half_median(X, threshold):

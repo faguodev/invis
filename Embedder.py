@@ -1,5 +1,6 @@
 #!/usr/bin/python
 import numpy as np
+import cupy as cp
 from copy import copy
 from sklearn import decomposition
 from collections import defaultdict
@@ -482,6 +483,9 @@ class ConstrainedKPCAIterative(Embedding):
         if set(self.control_point_indices) != self.old_control_point_indices:
            self.cp_selector_m_by_n, self.cp_selector_n_by_n = utils.construct_cp_selector_matrices(self.n, self.control_point_indices)
 
+        # B Matrix is K[m,:n] where m are the control point indices, (stacked on top of alpha_1)
+        # c is the control point coordinate in the given direction, (stacked on top of 0)
+
         alpha_1 = self.iterative_solver(None, 0)
         alpha_2 = self.iterative_solver(alpha_1, 1)
 
@@ -512,8 +516,6 @@ class ConstrainedKPCAIterative(Embedding):
         if len(self.control_point_indices) > 0:
             W = W - const_mu / len(self.control_point_indices) * self.cp_selector_n_by_n
 
-        print(alpha)
-        print(orth_mu)
         if alpha is not None:
             W = W - orth_mu * np.outer(alpha, alpha)
 
@@ -543,13 +545,13 @@ class ConstrainedKPCAIterative(Embedding):
 
 class cPCA(Embedding):
     def __init__(self, data, points, parent):
-        self.data = data
+        self.data = cp.asarray(data)
         self.control_points = []
         self.control_point_indices = []
         self.parent = parent
         self.X = None
-        self.Y = np.array([])
-        self.projection_matrix = np.zeros((2, len(self.data[0])))
+        self.Y = cp.array([])
+        self.projection_matrix = cp.zeros((2, len(self.data[0])))
         self.name = ''
         self.is_dynamic = False
 
@@ -558,8 +560,8 @@ class cPCA(Embedding):
         self.has_ml_cl_constraints = False
 
         self.name = "cPCA"
-        self.projection = np.zeros((2, len(data)))
-        self.pca_projection = np.zeros((2, len(data)))
+        self.projection = cp.zeros((2, len(data)))
+        self.pca_projection = cp.zeros((2, len(data)))
         self.is_dynamic = True 
         self.old_control_point_indices = []
 
@@ -575,22 +577,22 @@ class cPCA(Embedding):
         self.kernel_sys = self.embedder.kernel_sys(K)
         self.parent.status_text.setText("Done, calculating Gaussean kernel.")
 
-        label_mask = np.array([0])
+        label_mask = cp.array([0])
         self.quad_eig_sys = self.embedder.sph_cl_var_term_eig_sys(self.kernel_sys)
         self.quad_eig_sys_original = copy(self.quad_eig_sys)
         if len(self.control_point_indices) == 0:
-            placement_mask = np.array([0])
+            placement_mask = cp.array([0])
         else:
-            placement_mask = np.array(self.control_point_indices)
+            placement_mask = cp.array(self.control_point_indices)
         self.const_mu = self.embedder.const_nu(self.params, placement_mask, self.kernel_sys)
         self.update_control_points(points)
         self.finished_relocating()
         if len(self.Y) == 0:
-            pca_dirs = self.embedder.soft_cp_mode_directions(self.quad_eig_sys, label_mask, np.ones((1,2)), self.kernel_sys, self.params, 1e-20)
+            pca_dirs = self.embedder.soft_cp_mode_directions(self.quad_eig_sys, label_mask, cp.ones((1,2)), self.kernel_sys, self.params, 1e-20)
         else:
             for i in range(len(self.control_point_indices)):
                 self.quad_eig_sys = self.embedder.sph_cp_quad_term_eig_sys(self.kernel_sys, self.quad_eig_sys, self.control_point_indices[i], self.const_mu)
-            pca_dirs = self.embedder.soft_cp_mode_directions(self.quad_eig_sys, self.control_point_indices, self.Y, self.kernel_sys, self.params, self.const_mu)
+            pca_dirs = self.embedder.soft_cp_mode_directions(self.quad_eig_sys, self.control_point_indices, cp.asarray(self.Y), self.kernel_sys, self.params, self.const_mu)
         self.pca_projection = self.kernel_sys[0].dot(pca_dirs)
 
 
@@ -598,13 +600,13 @@ class cPCA(Embedding):
         if set(self.control_point_indices) != self.old_control_point_indices:
             self.pca_projection = self.finished_relocating()
         self.old_control_point_indices = set(self.control_point_indices)
-        return self.pca_projection.T
+        return cp.asnumpy(self.pca_projection.T)
 
 
     # this seems to be responsible for doing the actual calculation fo the directions
     def finished_relocating(self):
         if len(self.control_point_indices) > 0:
-            directions = self.embedder.soft_cp_mode_directions(self.quad_eig_sys, self.control_point_indices, self.Y, self.kernel_sys, self.params, self.const_mu)
+            directions = self.embedder.soft_cp_mode_directions(self.quad_eig_sys, self.control_point_indices, cp.asarray(self.Y), self.kernel_sys, self.params, self.const_mu)
             self.pca_projection = self.kernel_sys[0].dot(directions)
         return self.pca_projection
 
@@ -618,17 +620,17 @@ class cPCA(Embedding):
                 if selected_point == None:
                     selected_point = (list(set(self.control_point_indices) - set(self.old_control_point_indices)))[0]
                 self.quad_eig_sys = self.embedder.sph_cp_quad_term_eig_sys(self.kernel_sys, self.quad_eig_sys, selected_point, self.const_mu)
-                directions = self.embedder.soft_cp_mode_directions(self.quad_eig_sys, self.control_point_indices, self.Y, self.kernel_sys, self.params, self.const_mu)
+                directions = self.embedder.soft_cp_mode_directions(self.quad_eig_sys, self.control_point_indices, cp.asarray(self.Y), self.kernel_sys, self.params, self.const_mu)
                 self.pca_projection = self.kernel_sys[0].dot(directions)
         elif len(self.control_point_indices) < len(self.old_control_point_indices):
             self.quad_eig_sys = copy(self.quad_eig_sys_original)
             for i in range(len(self.control_point_indices)):
                 self.quad_eig_sys = self.embedder.sph_cp_quad_term_eig_sys(self.kernel_sys, self.quad_eig_sys, self.control_point_indices[i], self.const_mu)
             if len(self.control_point_indices) == 0:
-                pca_dirs = self.embedder.soft_cp_mode_directions(self.quad_eig_sys, np.array([0]), np.ones((1,2)), self.kernel_sys, self.params, 1e-20)
+                pca_dirs = self.embedder.soft_cp_mode_directions(self.quad_eig_sys, cp.array([0]), cp.ones((1,2)), self.kernel_sys, self.params, 1e-20)
                 self.pca_projection = self.kernel_sys[0].dot(pca_dirs)
             else:
-                pca_dirs = self.embedder.soft_cp_mode_directions(self.quad_eig_sys, self.control_point_indices, self.Y, self.kernel_sys, self.params, self.const_mu)
+                pca_dirs = self.embedder.soft_cp_mode_directions(self.quad_eig_sys, self.control_point_indices, cp.asarray(self.Y), self.kernel_sys, self.params, self.const_mu)
                 self.pca_projection = self.kernel_sys[0].dot(pca_dirs)
         self.old_control_point_indices = set(self.control_point_indices)
 
@@ -638,10 +640,10 @@ class cPCA(Embedding):
             for i in range(len(self.control_point_indices)):
                 self.quad_eig_sys = self.embedder.sph_cp_quad_term_eig_sys(self.kernel_sys, self.quad_eig_sys, self.control_point_indices[i], self.const_mu)
             if len(self.control_point_indices) == 0:
-                pca_dirs = self.embedder.soft_cp_mode_directions(self.quad_eig_sys, np.array([0]), np.ones((1,2)), self.kernel_sys, self.params, 1e-20)
+                pca_dirs = self.embedder.soft_cp_mode_directions(self.quad_eig_sys, cp.array([0]), cp.ones((1,2)), self.kernel_sys, self.params, 1e-20)
                 self.pca_projection = self.kernel_sys[0].dot(pca_dirs)
             else:
-                pca_dirs = self.embedder.soft_cp_mode_directions(self.quad_eig_sys, self.control_point_indices, self.Y, self.kernel_sys, self.params, self.const_mu)
+                pca_dirs = self.embedder.soft_cp_mode_directions(self.quad_eig_sys, self.control_point_indices, cp.asarray(self.Y), self.kernel_sys, self.params, self.const_mu)
                 self.pca_projection = self.kernel_sys[0].dot(pca_dirs)
 
         

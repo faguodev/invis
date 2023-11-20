@@ -4,7 +4,7 @@ Created on Nov 26, 2013
 @author: doglic
 '''
 
-import numpy as np
+import cupy as np
 
 '''
     Input:

@@ -4,12 +4,15 @@ Created on Jan 23, 2014
 @author: doglic
 '''
 import multiprocessing as mproc
-import numpy as np
+import cupy as np
+import numpy as np_cpu
 import utils
 import warnings
 import os
 import pickle
-from scipy.linalg import get_blas_funcs
+# from cupyx.scipy.linalg import get_blas_funcs
+
+mproc.set_start_method('spawn', force=True)
 
 #from scipy import linalg as spla
 '''
@@ -248,6 +251,7 @@ class eigen_secular_solver(secular_solver):
         return (root + sigmas[-1], shifted_sigmas - root)
         
     def root(self, i, v, sigmas, r=1.0):      
+        print('computing the ' + str(i) + '-th root...')
         n = sigmas.shape[0]
         if self.__is_outer_root(i, n):
             return self._outer_root(v, sigmas)
@@ -431,7 +435,7 @@ class rom_des_eigen_solver(object):
     def __inv_arg_permutation(self, arg_perm, n):
         inv_arg_perm = list(range(n))  # Convert range to a list
         for i in range(n):
-            inv_arg_perm[arg_perm[i]] = i 
+            inv_arg_perm[int(arg_perm[i])] = i 
         return inv_arg_perm
 
     
@@ -502,7 +506,7 @@ class rom_des_eigen_solver(object):
                     givens_deflates.append((givens_coeff, db[i - 1], db[i]))
                     v_[db[i]] = 0. # it is below the threshold due to the Givens rotation
                 
-        nnp = np.sort(list(set(range(n)) - set(nulled_poss)))
+        nnp = np_cpu.sort(list(set(range(n)) - set(nulled_poss)))
         
         non_nulled_pos = []
         for i in nnp:
@@ -804,9 +808,9 @@ class embedder(object):
         n = kernel_sys[0].shape[0]
         #H = np.identity(n) - float(1.0 / n)# * np.ones((n, n))
         # USE BLAS MATRIX MULTIPLICATION
-        gemm = get_blas_funcs(["gemm"], [kernel_sys[0]])
-        K2 = gemm[0](1, kernel_sys[0], kernel_sys[0])
-        # K2 = kernel_sys[0].dot(kernel_sys[0])
+        # gemm = get_blas_funcs(["gemm"], [kernel_sys[0]])
+        # K2 = gemm[0](1, kernel_sys[0], kernel_sys[0])
+        K2 = kernel_sys[0].dot(kernel_sys[0])
         l = np.sum(kernel_sys[0], axis=0).reshape(-1, 1)
         L = ((1. / n) * l).dot(l.T)
         sph_var_term = K2 - L

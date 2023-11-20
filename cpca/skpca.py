@@ -4,7 +4,7 @@ Created on Nov 28, 2013
 @author: doglic
 '''
 
-import numpy as np
+import cupy as np
 import sys
 import scipy.optimize as scopt
 import warnings
