@@ -1,4 +1,4 @@
-# invis
+# InVis
 Interactive Data Visualization
 
 Notes about the migration from Python 2.7 to 3.11:  
