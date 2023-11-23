@@ -1,5 +1,5 @@
 #!/usr/bin/python
-import numpy as np
+import cupy as np
 from copy import copy
 from sklearn import decomposition
 from collections import defaultdict
@@ -469,6 +469,10 @@ class ConstrainedKPCAIterative(Embedding):
         self.K = kernel.compute_matrix(data, self.params)
         self.K_sqrt, self.K_sqrt_inv = utils.construct_kernel_sys(self.K)
 
+        H = np.eye(self.n) - (1.0 / self.n) * np.ones((self.n, self.n))
+        # H = H / self.n
+        self.A = self.K_sqrt @ H @ self.K_sqrt
+        
         self.update_control_points(points)
 
     # resposible for getting the already calculated embedding
@@ -482,10 +486,27 @@ class ConstrainedKPCAIterative(Embedding):
         if set(self.control_point_indices) != self.old_control_point_indices:
            self.cp_selector_m_by_n, self.cp_selector_n_by_n = utils.construct_cp_selector_matrices(self.n, self.control_point_indices)
 
-        alpha_1 = self.iterative_solver(None, 0)
-        alpha_2 = self.iterative_solver(alpha_1, 1)
+        if True:
+            
+            alpha_1 = self.iterative_solver_soft(None, 0)
+            alpha_2 = self.iterative_solver_soft(alpha_1, 1)
 
-        self.projection_matrix = np.vstack((alpha_1, alpha_2))
+            self.projection_matrix = np.vstack((alpha_1, alpha_2))
+        else:
+            
+            B = self.cp_selector_m_by_n @ self.K_sqrt
+            c = self.Y[:,0]
+
+            alpha_1 = self.K_sqrt_inv @ self.algorithm_1(self.A, B, c)
+
+            print(alpha_1.shape)
+
+            B = np.vstack((B, alpha_1))
+            c = np.append(self.Y[:,1], 0)
+
+            alpha_2 = self.K_sqrt_inv @ self.algorithm_1(self.A, B, c)
+
+            self.projection_matrix = np.vstack((alpha_1, alpha_2))
 
         self.old_control_point_indices = set(self.control_point_indices)
 
@@ -500,7 +521,7 @@ class ConstrainedKPCAIterative(Embedding):
             l = len(self.control_point_indices)
         return float((self.params['const_nu'] * self.n) / l)
 
-    def iterative_solver(self, alpha, dimension):
+    def iterative_solver_soft(self, alpha, dimension):
         # compute W
         H = np.eye(self.n) - (1.0 / self.n) * np.ones((self.n, self.n))
 
@@ -550,9 +571,43 @@ class ConstrainedKPCAIterative(Embedding):
         print(alpha_s)
         return alpha_s
 
+    def algorithm_1(self, A, B, c):
+        """
+        Implements Algorithm 1 from Fast Normalized Cut with Linear Constraints by Xu, Li and Schuurmans.
+        
+        Args:
+        A (numpy.ndarray): The matrix A in the algorithm (nxn). 
+        B (numpy.ndarray): The matrix B in the algorithm (mxn).
+        c (numpy.ndarray): The vector c in the algorithm (mx1).
+        tol (float): Tolerance for convergence.
+        max_iter (int): Maximum number of iterations.
+        
+        Returns:
+        numpy.ndarray: The converged vector v.
+        """
+        # Calculating P and n0
+        BB_inv = np.linalg.inv(B @ B.T)
+        P = np.identity(A.shape[0]) - B.T @ BB_inv @ B
+        n0 = B.T @ BB_inv @ c
+        # I believe that to transform the problem from the ||v|| = 1 constraint to the ||v|| = r^2 constraint it suffices to change the constant below to r^2
+        gamma = np.sqrt(10000 - np.linalg.norm(n0) ** 2)
+
+        # Initial vector v0
+        v = P @ A @ n0
+        v = gamma * v / np.linalg.norm(v) + n0
 
 
+        # Iterative process
+        while True:
+            u = P @ A @ v
+            u = gamma * u / np.linalg.norm(u) 
+            v_new = u + n0
+            # Check for convergence
+            if np.linalg.norm(v_new - v) < self.params['tol']:
+                break
+            v = v_new
 
+        return v
 
 class cPCA(Embedding):
     def __init__(self, data, points, parent):
