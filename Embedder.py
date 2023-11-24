@@ -461,7 +461,7 @@ class ConstrainedKPCAIterative(Embedding):
         
         # constraint parameter, orthagonality parameter
         # TODO: adjust the parameters, maybe reuse the orth_nu and const_nu functions from dinos solver
-        self.params = {'const_nu' : 5e+3, 'orth_nu' : 5e+3, 'learning_rate' : 1e-3, 'tolerance' : 1e-6}
+        self.params = {'const_nu' : 5e+3, 'orth_nu' : 5e+3, 'learning_rate' : 1e-2, 'tolerance' : 1e-7}
         self.params['sigma'] = utils.median_pairwise_distances(data)
 
         # kernel (this uses scipy.linalg.sqrtm for the square root of the kernel matrix)
@@ -511,8 +511,13 @@ class ConstrainedKPCAIterative(Embedding):
             # Select the first 2 eigenvectors corresponding to the 2 largest eigenvalues
             self.projection_matrix = eigenvectors[:, :2].T
         else: """
-        self.alpha_1 = self.iterative_solver(None, 0)
-        self.alpha_2 = self.iterative_solver(self.alpha_1, 1)
+        import time
+        start = time.time()
+        self.alpha_1 = self.iterative_solver(None, 0, 'adam')
+        self.alpha_2 = self.iterative_solver(self.alpha_1, 1, 'adam')
+        end = time.time()
+        print("time: ")
+        print(end - start)
 
         self.projection_matrix = np.vstack((self.alpha_1, self.alpha_2))
 
@@ -529,10 +534,23 @@ class ConstrainedKPCAIterative(Embedding):
             l = len(self.control_point_indices)
         return float((self.params['const_nu'] * self.n) / l)
 
-    def iterative_solver(self, alpha, dimension):
+    def iterative_solver(self, alpha, dimension, optimizer='adam'):
+        # initialize v
+        if dimension is 0:
+            if self.alpha_1 is not None:
+                v = self.K_sqrt @ self.alpha_1
+            else:
+                v = np.random.rand(self.n)
+                v = v / np.linalg.norm(v)
+        else:
+            if self.alpha_2 is not None:
+                v = self.K_sqrt @ self.alpha_2
+            else:
+                v = np.random.rand(self.n)
+                v = v / np.linalg.norm(v)
+
         # compute W
         H = np.eye(self.n) - (1.0 / self.n) * np.ones((self.n, self.n))
-
         W = (1 / self.n) * H
 
         const_mu = 10
@@ -554,36 +572,130 @@ class ConstrainedKPCAIterative(Embedding):
             Y_s = self.Y[:, dimension]
             d = -1 * const_mu / len(self.control_point_indices) * Y_s.T @ self.cp_selector_m_by_n @ self.K_sqrt
 
-        # initialize v
-        if dimension is 0:
-            if self.alpha_1 is not None:
-                v = self.K_sqrt @ self.alpha_1
-            else:
-                v = np.random.rand(self.n)
-                v = v / np.linalg.norm(v)
-        else:
-            if self.alpha_2 is not None:
-                v = self.K_sqrt @ self.alpha_2
-            else:
-                v = np.random.rand(self.n)
-                v = v / np.linalg.norm(v)
+        iteration = 0
+        learning_rate = self.params['learning_rate']
 
+        initial_learning_rate = 0.01  # Example initial learning rate
+        decay_rate = 0.001            # Decay rate
         iteration = 0
 
-        while True:
-            iteration += 1
-            v_new = v + self.params['learning_rate'] * (C @ v - d)
-            v_new = v_new / np.linalg.norm(v_new)
-            if np.linalg.norm(v_new - v) < self.params['tolerance']:
-                break
-            if iteration % 100 == 0:
-                print("Iteration: ", iteration)
-                print("Norm: ", np.linalg.norm(v_new - v))
-            v = v_new
+        match optimizer:
+            case 'standard':
+                print("Running Standard")
+                while True:
+                    iteration += 1
+
+                    # Compute gradient
+                    dw = C @ v - d
+
+                    # Update parameters
+                    v_new = v + learning_rate * dw
+                    v_new = v_new / np.linalg.norm(v_new)
+
+                    if np.linalg.norm(v_new - v) < self.params['tolerance']:
+                        break
+
+                    if iteration % 1000 == 0:
+                        print("Iteration: ", iteration)
+                        print("Norm: ", np.linalg.norm(v_new - v))
+
+                    v = v_new
+
+            case 'nesterov':
+                print("Running Nesterov")
+                beta1 = 0.9
+                v_dw = np.zeros(self.n)
+
+                while True:
+                    iteration += 1
+
+                    # Nesterov lookahead (Check Sign)
+                    v_lookahead = v + beta1 * v_dw
+
+                    # Compute gradient at lookahead position
+                    dw = C @ v_lookahead - d
+
+                    # Update velocities
+                    v_dw = beta1 * v_dw + learning_rate * dw
+
+                    # Update parameters
+                    v_new = v + v_dw
+                    v_new = v_new / np.linalg.norm(v_new)
+
+                    if np.linalg.norm(v_new - v) < self.params['tolerance']:
+                        break
+
+                    if iteration % 1000 == 0:
+                        print("Iteration: ", iteration)
+                        print("Norm: ", np.linalg.norm(v_new - v))
+
+                    v = v_new
+                
+            case 'momentum':
+                print("Running Momentum")
+                beta1 = 0.9
+                v_dw = np.zeros(self.n)
+
+                while True:
+                    iteration += 1
+
+                    dw = C @ v - d
+
+                    # Update velocities
+                    v_dw = beta1 * v_dw + (1 - beta1) * dw
+
+                    # Update parameters
+                    v_new = v + learning_rate * v_dw
+                    v_new = v_new / np.linalg.norm(v_new)
+
+                    if np.linalg.norm(v_new - v) < self.params['tolerance']:
+                        break
+
+                    if iteration % 1000 == 0:
+                        print("Iteration: ", iteration)
+                        print("Norm: ", np.linalg.norm(v_new - v))
+
+                    v = v_new
+
+            case 'adam':
+                print("Running Adam")
+                beta1 = 0.9
+                beta2 = 0.999
+                epsilon = 1e-8
+                v_dw = np.zeros(self.n)
+                s_dw = np.zeros(self.n)
+
+                while True:
+                    iteration += 1
+
+                    learning_rate = initial_learning_rate / (1 + decay_rate * iteration)
+
+                    dw = C @ v - d
+
+                    # Update velocities
+                    v_dw = beta1 * v_dw + (1 - beta1) * dw
+                    s_dw = beta2 * s_dw + (1 - beta2) * (dw ** 2)
+
+                    # Bias correction
+                    v_dw_corrected = v_dw / (1 - beta1 ** iteration)
+                    s_dw_corrected = s_dw / (1 - beta2 ** iteration)
+
+                    # Update parameters
+                    v_new = v + learning_rate * v_dw_corrected / (np.sqrt(s_dw_corrected) + epsilon)
+                    v_new = v_new / np.linalg.norm(v_new)
+
+                    if np.linalg.norm(v_new - v) < self.params['tolerance']:
+                        break
+
+                    if iteration % 1000 == 0:
+                        print("Iteration: ", iteration)
+                        print("Norm: ", np.linalg.norm(v_new - v))
+
+                    v = v_new
+
+
 
         alpha_s = self.K_sqrt_inv @ v
-        print("alpha_s")
-        print(alpha_s)
         return alpha_s
 
 
