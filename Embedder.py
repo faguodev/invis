@@ -461,13 +461,16 @@ class ConstrainedKPCAIterative(Embedding):
         
         # constraint parameter, orthagonality parameter
         # TODO: adjust the parameters, maybe reuse the orth_nu and const_nu functions from dinos solver
-        self.params = {'const_nu' : 5e+3, 'orth_nu' : 5e+3, 'learning_rate' : 1e-3, 'iterations' : 1000, 'tolerance' : 1e-6}
+        self.params = {'const_nu' : 5e+3, 'orth_nu' : 5e+3, 'learning_rate' : 1e-3, 'tolerance' : 1e-6}
         self.params['sigma'] = utils.median_pairwise_distances(data)
 
         # kernel (this uses scipy.linalg.sqrtm for the square root of the kernel matrix)
         kernel = kernel_gen.gaussian_kernel()
         self.K = kernel.compute_matrix(data, self.params)
         self.K_sqrt, self.K_sqrt_inv = utils.construct_kernel_sys(self.K)
+
+        self.alpha_1 = None
+        self.alpha_2 = None
 
         self.update_control_points(points)
 
@@ -482,10 +485,36 @@ class ConstrainedKPCAIterative(Embedding):
         if set(self.control_point_indices) != self.old_control_point_indices:
            self.cp_selector_m_by_n, self.cp_selector_n_by_n = utils.construct_cp_selector_matrices(self.n, self.control_point_indices)
 
-        alpha_1 = self.iterative_solver(None, 0)
-        alpha_2 = self.iterative_solver(alpha_1, 1)
+        """ if self.alpha_1 is None and self.alpha_2 is None:
+            # perform kPCA and get the first two components
+            eigenvalues, eigenvectors = np.linalg.eigh(self.K)
+            
+            # Sort the eigenvalues and eigenvectors in descending order
+            idx = np.argsort(eigenvalues)[::-1]
+            eigenvalues = eigenvalues[idx]
+            eigenvectors = eigenvectors[:, idx]
 
-        self.projection_matrix = np.vstack((alpha_1, alpha_2))
+            v_1 = eigenvectors[:, 0].T
+            v_2 = -1 * eigenvectors[:, 1].T
+            
+            v_1 = self.K_sqrt @ v_1
+            v_2 = self.K_sqrt @ v_2
+
+            # normalize v_1 and v_2
+            v_1 = v_1 / np.linalg.norm(v_1)
+            v_2 = v_2 / np.linalg.norm(v_2)
+
+            #get correct alphas
+            self.alpha_1 = self.K_sqrt_inv @ v_1
+            self.alpha_2 = self.K_sqrt_inv @ v_2 
+                        
+            # Select the first 2 eigenvectors corresponding to the 2 largest eigenvalues
+            self.projection_matrix = eigenvectors[:, :2].T
+        else: """
+        self.alpha_1 = self.iterative_solver(None, 0)
+        self.alpha_2 = self.iterative_solver(self.alpha_1, 1)
+
+        self.projection_matrix = np.vstack((self.alpha_1, self.alpha_2))
 
         self.old_control_point_indices = set(self.control_point_indices)
 
@@ -506,12 +535,8 @@ class ConstrainedKPCAIterative(Embedding):
 
         W = (1 / self.n) * H
 
-        #const_mu = self.const_nu()
-        #orth_mu = self.orth_nu()
-
-        const_mu = 1
-        orth_mu = 1
-
+        const_mu = 10
+        orth_mu = 10
 
         if alpha is not None:
             W = W - orth_mu * np.outer(alpha, alpha)
@@ -530,7 +555,18 @@ class ConstrainedKPCAIterative(Embedding):
             d = -1 * const_mu / len(self.control_point_indices) * Y_s.T @ self.cp_selector_m_by_n @ self.K_sqrt
 
         # initialize v
-        v = np.random.rand(self.n)
+        if dimension is 0:
+            if self.alpha_1 is not None:
+                v = self.K_sqrt @ self.alpha_1
+            else:
+                v = np.random.rand(self.n)
+                v = v / np.linalg.norm(v)
+        else:
+            if self.alpha_2 is not None:
+                v = self.K_sqrt @ self.alpha_2
+            else:
+                v = np.random.rand(self.n)
+                v = v / np.linalg.norm(v)
 
         iteration = 0
 
@@ -604,6 +640,7 @@ class cPCA(Embedding):
             for i in range(len(self.control_point_indices)):
                 self.quad_eig_sys = self.embedder.sph_cp_quad_term_eig_sys(self.kernel_sys, self.quad_eig_sys, self.control_point_indices[i], self.const_mu)
             pca_dirs = self.embedder.soft_cp_mode_directions(self.quad_eig_sys, self.control_point_indices, self.Y, self.kernel_sys, self.params, self.const_mu)
+        self.projection_matrix = pca_dirs.T
         self.pca_projection = self.kernel_sys[0].dot(pca_dirs)
 
 
@@ -619,6 +656,7 @@ class cPCA(Embedding):
         if len(self.control_point_indices) > 0:
             directions = self.embedder.soft_cp_mode_directions(self.quad_eig_sys, self.control_point_indices, self.Y, self.kernel_sys, self.params, self.const_mu)
             self.pca_projection = self.kernel_sys[0].dot(directions)
+            self.projection_matrix = directions.T
         return self.pca_projection
 
 
