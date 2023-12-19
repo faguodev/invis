@@ -8,7 +8,7 @@ import sys
 import scipy.spatial.distance as dist
 
 sys.path.append('./../common')
-import utils
+from . import utils
 
 
 def center_kernel(K):

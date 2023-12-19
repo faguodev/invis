@@ -960,7 +960,7 @@ class MainWindow(QMainWindow):
             self.embedding_algorithm = ConstrainedKPCAIterative(self.data.data, self.control_points, self)
             self.set_xy_limits()
             self.embedding_algorithm.update_must_and_cannot_link(self.must_link, self.cannot_link)
-            # self.embedding_algorithm.update_control_points(self.control_points)
+            self.embedding_algorithm.update_control_points(self.control_points)
             self.update()
 
 

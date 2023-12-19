@@ -452,13 +452,52 @@ class ConstrainedKPCAIterative(Embedding):
         self.is_dynamic = True 
         
         self.n = len(data)
-        
-        # constraint parameter, orthagonality parameter
-        sigma = utils.median_pairwise_distances(data)
 
-        # kernel (this uses scipy.linalg.sqrtm for the square root of the kernel matrix)
-        kernel = kernel_gen.gaussian_kernel()
-        self.K = kernel.compute_matrix(data, {'sigma' : sigma})
+        try:
+            m, ok = QInputDialog.getText(parent, 'Metric', 'Enter number of the desired kernel:\n1) Gaussian (Default)\n2) Polynomial\n3) Cosine Linear\n4) Isomap\n5) Pseudoinverse of Laplacian-Kernel\n6) Pseudoinverse of Laplacian-Kernel (using k-NN)')
+            
+            kernel = kernel_gen.gaussian_kernel()
+            params = {'sigma' : utils.median_pairwise_distances(data)}
+
+            match m:
+                case '2':
+                    kernel = kernel_gen.polynomial_kernel()
+                    degree, ok = QInputDialog.getText(parent, 'Degree', 'Enter degree of polynomial kernel (default is 1):')
+                    if degree == '':
+                        degree = 1
+                    params['degree'] = float(degree)
+                    print("Degree: " + str(degree))
+                case '3':
+                    kernel = kernel_gen.cos_linear_kernel()
+                    params['degree'] = 1
+                case '4':
+                    kernel = kernel_gen.isomap_kernel()
+                case '5':
+                    kernel = kernel_gen.pinv_laplacian_kernel()
+                    epsilon, ok = QInputDialog.getText(parent, 'Epsilon', 'Enter epsilon for Laplacian kernel (default is 0.5):')
+                    if epsilon == '':
+                        epsilon = 0.5
+                    params['epsilon'] = float(epsilon)
+                    print("Epsilon: " + str(epsilon))
+                case '6':
+                    kernel = kernel_gen.pinv_k_nn_laplacian_kernel()
+                    k, ok = QInputDialog.getText(parent, 'Degree', 'Enter k for k-NN (default is 3):')
+                    if k == '':
+                        k = 3
+                    params['k'] = int(k)
+                    params['sigma'] = utils.median_pairwise_distances(data)
+                case _:
+                    kernel = kernel_gen.gaussian_kernel()
+        except:
+            msg = "It seems like something went wrong in the parameter selection"
+            QMessageBox.about(parent, "Embedding error", msg) 
+
+        print("before compute kernel matrix")
+
+        self.K = kernel.compute_matrix(data, params)
+
+        print("after compute kernel matrix")
+
         self.K_sqrt, self.K_sqrt_inv = utils.construct_kernel_sys(self.K)
 
         # Transfer to GPU
@@ -583,6 +622,10 @@ class ConstrainedKPCAIterative(Embedding):
             # Update parameters
             v_new = v + v_dw
             v_new = v_new / cp.linalg.norm(v_new)
+
+            if iteration % 100 == 0:
+                print(f"Iteration: {iteration}")
+                print(cp.linalg.norm(v_new - v))
 
             if cp.linalg.norm(v_new - v) < 1e-6:
                 print(f"Converged after {iteration} iterations")

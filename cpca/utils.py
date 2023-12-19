@@ -189,8 +189,8 @@ def k_nn_pw_sq_distance_mat(X, k):
                 threshold_tuple = (new_th_idx, top_k_nn_dists[new_th_idx])
         
         for j in range(k):
-            adj_mat[i, top_k_nn_idxs[j]] = top_k_nn_dists[j]
-            adj_mat[top_k_nn_idxs[j], i] = adj_mat[i, top_k_nn_idxs[j]]
+            adj_mat[i, int(top_k_nn_idxs[j])] = int(top_k_nn_dists[j])
+            adj_mat[int(top_k_nn_idxs[j]), i] = adj_mat[i, int(top_k_nn_idxs[j])]
             
     return adj_mat
 
@@ -394,7 +394,7 @@ def variance_weighting(sh_paths, pos_lab_indices, neg_lab_indices):
 def largest_mst_weigth(data, incid_vec):
     sigma = 0.0
     for i in range(1, incid_vec.shape[0]):
-        d = np.linalg.norm(data[i, :] - data[incid_vec[i], :])
+        d = np.linalg.norm(data[i, :] - data[int(incid_vec[i]), :])
         if d > sigma:
             sigma = d
     
