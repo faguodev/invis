@@ -1,6 +1,7 @@
 #!/usr/bin/python
 import numpy as np
 from copy import copy
+import cupy as cp
 from sklearn import decomposition
 from collections import defaultdict
 # from scipy.spatial import distance
@@ -16,17 +17,7 @@ from sklearn.manifold import Isomap, MDS, TSNE, LocallyLinearEmbedding
 import cpca.solvers as solvers
 import cpca.kernel_gen as kernel_gen
 import cpca.utils as utils
-import pandas as pd
-
-import warnings
-from scipy import linalg
-
-try:
-    from sklearn.utils.sparsetools import _graph_validation
-    from sklearn.neighbors import typedefs
-except:
-    pass
-
+from cupyx.profiler import benchmark
 
 class PopupSlider(QDialog):
     def __init__(self, label_text, default=4, minimum=1, maximum=20):
@@ -433,17 +424,23 @@ class cPCA_dummy(Embedding):
 class ConstrainedKPCAIterative(Embedding):
     # points here is a predefined dictionary of control points. That's why update control points is called in the init part
     def __init__(self, data, points, parent):
-        # general initialization
+        """
+        Initialize constrained Kernel PCA embedding.
+
+        Args:
+            data (pd.DataFrame): Input data for the embedding.
+        """
         self.data = data
-        self.n = len(data)
         self.control_points = []
         self.control_point_indices = []
-        self.parent = parent
         self.X = None
-        self.Y = np.array([])
-        self.projection_matrix = np.zeros((2, len(self.data[0])))
-        self.name = ''
-        self.is_dynamic = False
+        self.Y = None
+        self.projection_matrix = cp.zeros((2, self.data.shape[0]))
+        
+        # control points
+        self.cp_selector_m_by_n = None
+        self.cp_selector_n_by_n = None
+        self.old_control_point_indices = []
 
         # Must link canont link
         self.ml = []
@@ -454,249 +451,152 @@ class ConstrainedKPCAIterative(Embedding):
         self.name = "cKPCA_iterative"
         self.is_dynamic = True 
         
-        # control points
-        self.cp_selector_m_by_n = np.zeros((len(points), self.n))
-        self.cp_selector_n_by_n = np.zeros((self.n, self.n)) 
-        self.old_control_point_indices = []
+        self.n = len(data)
         
         # constraint parameter, orthagonality parameter
-        # TODO: adjust the parameters, maybe reuse the orth_nu and const_nu functions from dinos solver
-        self.params = {'const_nu' : 5e+3, 'orth_nu' : 5e+3, 'learning_rate' : 1e-2, 'tolerance' : 1e-7}
-        self.params['sigma'] = utils.median_pairwise_distances(data)
+        sigma = utils.median_pairwise_distances(data)
 
         # kernel (this uses scipy.linalg.sqrtm for the square root of the kernel matrix)
         kernel = kernel_gen.gaussian_kernel()
-        self.K = kernel.compute_matrix(data, self.params)
+        self.K = kernel.compute_matrix(data, {'sigma' : sigma})
         self.K_sqrt, self.K_sqrt_inv = utils.construct_kernel_sys(self.K)
 
+        # Transfer to GPU
+        self.K = cp.asarray(self.K)
+        self.K_sqrt = cp.asarray(self.K_sqrt)
+        self.K_sqrt_inv = cp.asarray(self.K_sqrt_inv)
+
+        # compute W
+        H = cp.eye(len(self.K)) - (1 / len(self.K)) * cp.ones((len(self.K), len(self.K)))
+        self.W = (1/self.n) * H
+
+        v1 = cp.random.rand(self.n)
+        self.v1 = v1 / cp.linalg.norm(v1)
+
+        v2 = cp.random.rand(self.n)
+        self.v2 = v2 / cp.linalg.norm(v2)
+
+        self.C_var = self.K_sqrt @ self.W @ self.K_sqrt
+        self.C_cp = 0
+
+        self.const_mu = 10
+        self.orth_mu = 10
+        
         self.alpha_1 = None
         self.alpha_2 = None
 
-        self.update_control_points(points)
+        self.max_iter = 10 ** 100
 
-    # resposible for getting the already calculated embedding
-    def get_embedding(self, X=None):
-        return self.projection_matrix @ self.K
+        print(benchmark(self.update_control_points, (points,), n_repeat=1, n_warmup=0))
+
+        self.max_iter = 100
 
     # points seems to be a dictionary of pointindices and their xy coordinates
     def update_control_points(self, points):
-        super(ConstrainedKPCAIterative, self).update_control_points(points)
+        self.control_points = []
+        self.control_point_indices = []
+        for i, coords in points.items():
+            self.control_point_indices.append(i)
+            self.control_points.append(coords)
+        self.X = self.data[self.control_point_indices]
+        self.Y = cp.array(self.control_points)
         
-        if set(self.control_point_indices) != self.old_control_point_indices:
-           self.cp_selector_m_by_n, self.cp_selector_n_by_n = utils.construct_cp_selector_matrices(self.n, self.control_point_indices)
+        self._benchmark_update_params(points)
+        self._benchmark_iteration()
+        self._benchmark_construct_projection_matrix()
 
-        """ if self.alpha_1 is None and self.alpha_2 is None:
-            # perform kPCA and get the first two components
-            eigenvalues, eigenvectors = np.linalg.eigh(self.K)
-            
-            # Sort the eigenvalues and eigenvectors in descending order
-            idx = np.argsort(eigenvalues)[::-1]
-            eigenvalues = eigenvalues[idx]
-            eigenvectors = eigenvectors[:, idx]
-
-            v_1 = eigenvectors[:, 0].T
-            v_2 = -1 * eigenvectors[:, 1].T
-            
-            v_1 = self.K_sqrt @ v_1
-            v_2 = self.K_sqrt @ v_2
-
-            # normalize v_1 and v_2
-            v_1 = v_1 / np.linalg.norm(v_1)
-            v_2 = v_2 / np.linalg.norm(v_2)
-
-            #get correct alphas
-            self.alpha_1 = self.K_sqrt_inv @ v_1
-            self.alpha_2 = self.K_sqrt_inv @ v_2 
-                        
-            # Select the first 2 eigenvectors corresponding to the 2 largest eigenvalues
-            self.projection_matrix = eigenvectors[:, :2].T
-        else: """
-        import time
-        start = time.time()
-        self.alpha_1 = self.iterative_solver(None, 0, 'adam')
-        self.alpha_2 = self.iterative_solver(self.alpha_1, 1, 'adam')
-        end = time.time()
-        print("time: ")
-        print(end - start)
-
-        self.projection_matrix = np.vstack((self.alpha_1, self.alpha_2))
-
-        self.old_control_point_indices = set(self.control_point_indices)
-
-    def orth_nu(self):
-        # that differs from the dinos solver in the sign
-        # But should be fine as dinos solver handles the sign of orth_nu and const_nu differently
-        return float((self.n * self.params['orth_nu']) / float(2))
-    
-    def const_nu(self):
-        l = 1
-        if len(self.control_point_indices) > 0:
-            l = len(self.control_point_indices)
-        return float((self.params['const_nu'] * self.n) / l)
-
-    def iterative_solver(self, alpha, dimension, optimizer='adam'):
-        # initialize v
-        if dimension is 0:
-            if self.alpha_1 is not None:
-                v = self.K_sqrt @ self.alpha_1
+    def _benchmark_update_params(self, points):
+        if points is not None and set(self.control_point_indices) != set(self.old_control_point_indices):
+            self.old_control_point_indices = self.control_point_indices
+            self.cp_selector_m_by_n, self.cp_selector_n_by_n = utils.construct_cp_selector_matrices(self.n, self.control_point_indices)
+            if(len(self.control_point_indices) > 0):
+                self.C_cp = self.K_sqrt @ (self.const_mu / len(self.control_point_indices) * self.cp_selector_n_by_n) @ self.K_sqrt
             else:
-                v = np.random.rand(self.n)
-                v = v / np.linalg.norm(v)
-        else:
-            if self.alpha_2 is not None:
-                v = self.K_sqrt @ self.alpha_2
-            else:
-                v = np.random.rand(self.n)
-                v = v / np.linalg.norm(v)
+                self.C_cp = 0
 
-        # compute W
-        H = np.eye(self.n) - (1.0 / self.n) * np.ones((self.n, self.n))
-        W = (1 / self.n) * H
+    def _benchmark_iteration(self):
+        self.alpha_1, self.v1 = self.solve_iteratively(None, 0, self.v1)
+        self.alpha_2, self.v2 = self.solve_iteratively(self.alpha_1, 1, self.v2)
 
-        const_mu = 10
-        orth_mu = 10
+    def _benchmark_construct_projection_matrix(self):
+        self.projection_matrix = cp.vstack((self.alpha_1, self.alpha_2))
 
+    def solve_iteratively(self, alpha, dimension, v):
+        
+        """
+        Solve the constrained optimization problem iteratively.
+
+        Args:
+            alpha (cp.ndarray): The previous alpha vector.
+            dimension (int): The dimension to solve for.
+        """
+
+        # Create start event
+        # start_event = cp.cuda.Event()
+        # end_event = cp.cuda.Event()
+
+        # Record start event
+        # start_event.record()
+
+        C = self.C_var - self.C_cp
         if alpha is not None:
-            W = W - orth_mu * np.outer(alpha, alpha)
-
-        if len(self.control_point_indices) > 0:
-            W = W - const_mu / len(self.control_point_indices) * self.cp_selector_n_by_n
-
-        # compute C
-        C = self.K_sqrt @ W @ self.K_sqrt
-
-        # compute d
-        d = 0 
+            temp = self.K_sqrt @ alpha
+            temp = self.orth_mu * np.outer(temp, temp)
+            C = C - temp
         
+
+        # Record end event
+        # end_event.record()
+
+        # Wait for the end event to complete
+        # end_event.synchronize()
+
+        # Calculate elapsed time
+        # elapsed_time = cp.cuda.get_elapsed_time(start_event, end_event)
+
+        # print("Setting up marices " + str(dimension) + " " + str(elapsed_time))
+
+        d = cp.zeros(len(self.K))
+
         if len(self.control_point_indices) > 0:
             Y_s = self.Y[:, dimension]
-            d = -1 * const_mu / len(self.control_point_indices) * Y_s.T @ self.cp_selector_m_by_n @ self.K_sqrt
+            d = -1 * self.const_mu / len(self.control_point_indices) * Y_s.T @ self.cp_selector_m_by_n @ self.K_sqrt
 
+        # Iteration takes very roughly 1 millisecond
+
+        learning_rate = 7e-2
+        beta1 = 0.95
         iteration = 0
-        learning_rate = self.params['learning_rate']
+        v_dw = cp.zeros(self.n)
 
-        initial_learning_rate = 0.01  # Example initial learning rate
-        decay_rate = 0.001            # Decay rate
-        iteration = 0
+        while iteration < self.max_iter:
+            iteration += 1
+            # Nesterov lookahead (Check Sign)
+            v_lookahead = v + beta1 * v_dw
 
-        match optimizer:
-            case 'standard':
-                print("Running Standard")
-                while True:
-                    iteration += 1
+            # Compute gradient at lookahead position
+            dw = C @ v_lookahead - d
 
-                    # Compute gradient
-                    dw = C @ v - d
+            # Update velocities
+            v_dw = beta1 * v_dw + learning_rate * dw
 
-                    # Update parameters
-                    v_new = v + learning_rate * dw
-                    v_new = v_new / np.linalg.norm(v_new)
+            # Update parameters
+            v_new = v + v_dw
+            v_new = v_new / cp.linalg.norm(v_new)
 
-                    if np.linalg.norm(v_new - v) < self.params['tolerance']:
-                        break
+            if cp.linalg.norm(v_new - v) < 1e-6:
+                print(f"Converged after {iteration} iterations")
+                break
 
-                    if iteration % 1000 == 0:
-                        print("Iteration: ", iteration)
-                        print("Norm: ", np.linalg.norm(v_new - v))
-
-                    v = v_new
-
-            case 'nesterov':
-                print("Running Nesterov")
-                beta1 = 0.9
-                v_dw = np.zeros(self.n)
-
-                while True:
-                    iteration += 1
-
-                    # Nesterov lookahead (Check Sign)
-                    v_lookahead = v + beta1 * v_dw
-
-                    # Compute gradient at lookahead position
-                    dw = C @ v_lookahead - d
-
-                    # Update velocities
-                    v_dw = beta1 * v_dw + learning_rate * dw
-
-                    # Update parameters
-                    v_new = v + v_dw
-                    v_new = v_new / np.linalg.norm(v_new)
-
-                    if np.linalg.norm(v_new - v) < self.params['tolerance']:
-                        break
-
-                    if iteration % 1000 == 0:
-                        print("Iteration: ", iteration)
-                        print("Norm: ", np.linalg.norm(v_new - v))
-
-                    v = v_new
-                
-            case 'momentum':
-                print("Running Momentum")
-                beta1 = 0.9
-                v_dw = np.zeros(self.n)
-
-                while True:
-                    iteration += 1
-
-                    dw = C @ v - d
-
-                    # Update velocities
-                    v_dw = beta1 * v_dw + (1 - beta1) * dw
-
-                    # Update parameters
-                    v_new = v + learning_rate * v_dw
-                    v_new = v_new / np.linalg.norm(v_new)
-
-                    if np.linalg.norm(v_new - v) < self.params['tolerance']:
-                        break
-
-                    if iteration % 1000 == 0:
-                        print("Iteration: ", iteration)
-                        print("Norm: ", np.linalg.norm(v_new - v))
-
-                    v = v_new
-
-            case 'adam':
-                print("Running Adam")
-                beta1 = 0.9
-                beta2 = 0.999
-                epsilon = 1e-8
-                v_dw = np.zeros(self.n)
-                s_dw = np.zeros(self.n)
-
-                while True:
-                    iteration += 1
-
-                    learning_rate = initial_learning_rate / (1 + decay_rate * iteration)
-
-                    dw = C @ v - d
-
-                    # Update velocities
-                    v_dw = beta1 * v_dw + (1 - beta1) * dw
-                    s_dw = beta2 * s_dw + (1 - beta2) * (dw ** 2)
-
-                    # Bias correction
-                    v_dw_corrected = v_dw / (1 - beta1 ** iteration)
-                    s_dw_corrected = s_dw / (1 - beta2 ** iteration)
-
-                    # Update parameters
-                    v_new = v + learning_rate * v_dw_corrected / (np.sqrt(s_dw_corrected) + epsilon)
-                    v_new = v_new / np.linalg.norm(v_new)
-
-                    if np.linalg.norm(v_new - v) < self.params['tolerance']:
-                        break
-
-                    if iteration % 1000 == 0:
-                        print("Iteration: ", iteration)
-                        print("Norm: ", np.linalg.norm(v_new - v))
-
-                    v = v_new
-
-
+            v = v_new
 
         alpha_s = self.K_sqrt_inv @ v
-        return alpha_s
+        return alpha_s, v
+    
+    # resposible for getting the already calculated embedding
+    def get_embedding(self, X=None):
+        return cp.asnumpy(self.projection_matrix @ self.K)
+
 
 
 
@@ -794,6 +694,7 @@ class cPCA(Embedding):
                 pca_dirs = self.embedder.soft_cp_mode_directions(self.quad_eig_sys, self.control_point_indices, self.Y, self.kernel_sys, self.params, self.const_mu)
                 self.pca_projection = self.kernel_sys[0].dot(pca_dirs)
         self.old_control_point_indices = set(self.control_point_indices)
+        self.finished_relocating()
 
         if self.has_ml_cl_constraints:
             self.augment_control_points(self.get_embedding().T)

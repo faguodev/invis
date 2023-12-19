@@ -13,6 +13,7 @@ import scipy.spatial.distance as dist
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
+import cupy as cp
 import multiprocessing as mproc
 import logging
 from logging import handlers
@@ -457,21 +458,6 @@ def planar_class_embedding(X, y, labelled_idxs, path):
     plt.savefig(path, dpi = 200)    
     plt.close()
 
-# Florians code below
-
-def construct_cp_selector_matrices(n, indices):
-    # Length of the indices list
-    m = len(indices)
-
-    # First matrix: m x n
-    m_matrix = np.zeros((m, n))
-    m_matrix[np.arange(m), indices] = 1
-
-    # Second matrix: n x n
-    n_matrix = np.zeros((n, n))
-    n_matrix[indices, indices] = 1
-
-    return m_matrix, n_matrix
 
 def construct_kernel_sys(K):
     eigvals, eigvecs = np.linalg.eigh(K)
@@ -494,3 +480,19 @@ def construct_kernel_sys(K):
     sqrt_mat = eigvecs @ sqrt_eig_vals @ eigvecs.T
     sqrt_inv_mat = eigvecs @ sqrt_inv_diag @ eigvecs.T
     return (sqrt_mat, sqrt_inv_mat)
+
+# Florians code below
+
+def construct_cp_selector_matrices(n, control_point_indices):
+    # Length of the indices list
+    m = len(control_point_indices)
+
+    # First matrix: m x n
+    m_matrix = cp.zeros((m, n))
+    m_matrix[cp.arange(m), control_point_indices] = 1
+
+    # Second matrix: n x n
+    n_matrix = cp.zeros((n, n))
+    n_matrix[control_point_indices, control_point_indices] = 1
+
+    return m_matrix, n_matrix
