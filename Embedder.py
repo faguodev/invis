@@ -540,6 +540,11 @@ class ConstrainedKPCAIterative(Embedding):
         self.X = self.data[self.control_point_indices]
         self.Y = cp.array(self.control_points)
         
+        if len(self.control_point_indices) == 0:
+            self.max_iter = 10 ** 100
+        else:
+            self.max_iter = 100
+
         self._benchmark_update_params(points)
         self._benchmark_iteration()
         self._benchmark_construct_projection_matrix()
@@ -622,10 +627,6 @@ class ConstrainedKPCAIterative(Embedding):
             # Update parameters
             v_new = v + v_dw
             v_new = v_new / cp.linalg.norm(v_new)
-
-            if iteration % 100 == 0:
-                print(f"Iteration: {iteration}")
-                print(cp.linalg.norm(v_new - v))
 
             if cp.linalg.norm(v_new - v) < 1e-6:
                 print(f"Converged after {iteration} iterations")

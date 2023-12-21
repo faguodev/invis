@@ -239,7 +239,7 @@ class Dataset():
         self.update_data()
 
 
-    def read_in_timeseries(self, path):
+    def read_in_timeseries(self, path, parent):
         try:
             self.w = PopupAutocorrellationSlider('How many Autocorrellation lags do you want to consider?', 2, 1, 50)
             self.w.exec_()
@@ -248,7 +248,7 @@ class Dataset():
                 num = 0
         except:
             msg = "WTF man??!"
-            QMessageBox.about(parent, "Big error", msg)
+            # QMessageBox.about(parent, "Big error", msg)
         autoCorrelLags = num
         try:
             self.w = PopupAutocorrellationSlider('How much lag for AR in the ARMA process do you want to consider?', 1, 0, 5)
@@ -258,7 +258,7 @@ class Dataset():
                 num = 0
         except:
             msg = "WTF man??!"
-            QMessageBox.about(parent, "Big error", msg)
+            # QMessageBox.about(parent, "Big error", msg)
         arProcessLags = num
         try:
             min = 0
@@ -271,7 +271,7 @@ class Dataset():
                 num = 0
         except:
             msg = "WTF man??!"
-            QMessageBox.about(parent, "Big error", msg)
+            # QMessageBox.about(parent, "Big error", msg)
         maProcessLags = num
         try:
             self.w = PopupAutocorrellationSlider('How many top frequencies of a DTF do you want to consider?', 1, 0, 10)
@@ -281,7 +281,7 @@ class Dataset():
                 num = 0
         except:
             msg = "WTF man??!"
-            QMessageBox.about(parent, "Big error", msg)
+            # QMessageBox.about(parent, "Big error", msg)
         kFrequencies = num
         path = str(path)
         self.dataset_name = path.split('/')[-1][:-4]
