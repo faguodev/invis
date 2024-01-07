@@ -670,10 +670,10 @@ class cPCA(Embedding):
         self.is_dynamic = True 
         self.old_control_point_indices = []
 
-        # r = radius? slv_mode: type of solver, sigma, degree, epsilon are parameters for the kernel
+        # r = radius, slv_mode: type of solver, sigma, degree, epsilon are parameters for the kernel
         self.params = {'r' : 3.0, 'slv_mode' : 'secular', 'sigma' : None, 'epsilon' : 0.5, 'degree' : 1}
-        self.params['const_nu'] = 5e+3 # constraint parameter?
-        self.params['orth_nu'] = 5e+3 # orthogonality parameter?
+        self.params['const_nu'] = 5e+3 # constraint parameter
+        self.params['orth_nu'] = 5e+3 # orthogonality parameter
         self.params['sigma'] = utils.median_pairwise_distances(data)
         gk = kernel_gen.gaussian_kernel()
         # gk = kernel_gen.polynomial_kernel()
@@ -693,6 +693,7 @@ class cPCA(Embedding):
         self.update_control_points(points)
         self.finished_relocating()
         if len(self.Y) == 0:
+            # this for some reson already passes a cp with ones and labelmask np.array([0]) and const_mu 1e-20
             pca_dirs = self.embedder.soft_cp_mode_directions(self.quad_eig_sys, label_mask, np.ones((1,2)), self.kernel_sys, self.params, 1e-20)
         else:
             for i in range(len(self.control_point_indices)):

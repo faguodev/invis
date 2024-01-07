@@ -800,20 +800,23 @@ class embedder(object):
         return (K, sqrt_mat, sqrt_inv_mat, eigvals, eigvecs)
     
     # this seems to calculate the eigendecomposition of the variance term
+    # sph might have something to do with sphere, interesting to note is that the commented out part uses kernel_sys[1] instead of kernel_sys[0]
+    # Original Implementation is K @ K - K @ np.ones((n, n)) @ K = (K - np.ones((n, n))) @ K
     def sph_cl_var_term_eig_sys(self, kernel_sys):
         n = kernel_sys[0].shape[0]
         #H = np.identity(n) - float(1.0 / n)# * np.ones((n, n))
         # USE BLAS MATRIX MULTIPLICATION
-        gemm = get_blas_funcs(["gemm"], [kernel_sys[0]])
-        K2 = gemm[0](1, kernel_sys[0], kernel_sys[0])
+        gemm = get_blas_funcs(["gemm"], [kernel_sys[1]])
+        K2 = gemm[0](1, kernel_sys[1], kernel_sys[1])
         # K2 = kernel_sys[0].dot(kernel_sys[0])
-        l = np.sum(kernel_sys[0], axis=0).reshape(-1, 1)
+        l = np.sum(kernel_sys[1], axis=0).reshape(-1, 1)
         L = ((1. / n) * l).dot(l.T)
         sph_var_term = K2 - L
         #sph_var_term = kernel_sys[1].dot(H).dot(kernel_sys[1])
         svt_eig_vals, svt_eig_vecs = np.linalg.eigh(sph_var_term)
         return (svt_eig_vals, svt_eig_vecs)
     
+    # whatever this is it's never used
     def unl_sph_cl_var_term_eig_sys(self, kernel_sys, cp_indxs, mu):
         m = cp_indxs.shape[0]
         n = kernel_sys[0].shape[0]
@@ -935,6 +938,7 @@ class embedder(object):
         return self.direction_solver.hard_orth_directions(kernel_sys, sph_quad_eig_sys, -0.5 * sph_kb_terms[1], params['r'], params['dim'])
     
     # this seems to be important, does the actual optimization
+    # soft controlpoint
     def soft_cp_mode_directions(self, sph_quad_eig_sys, label_mask, y, kernel_sys, params, const_nu):
         dim = y.shape[1]
         orth_nu = self.orth_nu(params, dim, kernel_sys)
@@ -953,7 +957,8 @@ class embedder(object):
         l = label_mask.shape[0]
         return float((params['const_nu'] * n) / l)
     
-    # calculates d = K^-1/2 * b
+    # calculates d = K^-1/2 * -2 * const_nu * K[m,n].T * y
+    # so for some reason there's a - sign
     def __interpret_cp_lin_constraint(self, kernel_sys, y, label_mask, const_nu):
         lab_sub_K = kernel_sys[0][label_mask, :]
         ellipsoid_lin_term = -2 * const_nu * lab_sub_K.T.dot(y)
