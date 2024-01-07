@@ -51,6 +51,15 @@ class polynomial_kernel(kernel_functional):
         
         return np.power(1 + np.dot(x, y), params['degree'])
 
+class linear_kernel(kernel_functional):
+        
+        
+        def compute_matrix(self, points, params=None):
+            return np.dot(points, np.transpose(points))
+        
+        
+        def evaluate(self, x, y, params=None):
+            return np.dot(x, y)
 
 class cos_linear_kernel(polynomial_kernel):
     

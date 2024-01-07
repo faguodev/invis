@@ -454,7 +454,7 @@ class ConstrainedKPCAIterative(Embedding):
         self.n = len(data)
 
         try:
-            m, ok = QInputDialog.getText(parent, 'Metric', 'Enter number of the desired kernel:\n1) Gaussian (Default)\n2) Polynomial\n3) Cosine Linear\n4) Isomap\n5) Pseudoinverse of Laplacian-Kernel\n6) Pseudoinverse of Laplacian-Kernel (using k-NN)')
+            m, ok = QInputDialog.getText(parent, 'Metric', 'Enter number of the desired kernel:\n1) Gaussian (Default)\n2) Polynomial\n3) Cosine Linear\n4) Isomap\n5) Pseudoinverse of Laplacian-Kernel\n6) Pseudoinverse of Laplacian-Kernel (using k-NN)\n7) Linear')
             
             kernel = kernel_gen.gaussian_kernel()
             params = {'sigma' : utils.median_pairwise_distances(data)}
@@ -486,6 +486,8 @@ class ConstrainedKPCAIterative(Embedding):
                         k = 3
                     params['k'] = int(k)
                     params['sigma'] = utils.median_pairwise_distances(data)
+                case '7':
+                    kernel = kernel_gen.linear_kernel()
                 case _:
                     kernel = kernel_gen.gaussian_kernel()
         except:
