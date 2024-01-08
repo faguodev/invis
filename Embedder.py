@@ -445,7 +445,8 @@ class ConstrainedKPCAIterative(Embedding):
         # Must link canont link
         self.ml = []
         self.cl = []
-        self.has_ml_cl_constraints = False
+        self.old_ml_constraints = []
+        self.old_cl_constraints = []
 
         # Algorithm details
         self.name = "cKPCA_iterative"
@@ -519,8 +520,10 @@ class ConstrainedKPCAIterative(Embedding):
 
         self.C_var = self.K_sqrt @ self.W @ self.K_sqrt
         self.C_cp = 0
+        self.C_ml_cml = 0
 
-        self.const_mu = 10
+        self.cp_const_mu = 10
+        self.cl_ml_const_mu = 0.1 #0.1 seems good (upper bound) choice for cl
         self.orth_mu = 10
         
         self.alpha_1 = None
@@ -531,6 +534,47 @@ class ConstrainedKPCAIterative(Embedding):
         print(benchmark(self.update_control_points, (points,), n_repeat=1, n_warmup=0))
 
         self.max_iter = 100
+
+    def update_must_and_cannot_link(self, ml, cl):
+        self.ml = [constraint for constraint in ml if isinstance(constraint, set) and len(constraint) == 2]
+        self.cl = [constraint for constraint in cl if isinstance(constraint, set) and len(constraint) == 2]
+        self.max_iter = 10 ** 100
+
+        print("ml", self.ml)
+        print("cl", self.cl)
+
+        if (len(self.ml) > 0):
+            i,j = tuple(self.ml[0])
+            coord_i = (self.projection_matrix @ self.K)[:, i]
+            coord_j = (self.projection_matrix @ self.K)[:, j]
+
+            dist = cp.linalg.norm(coord_i - coord_j)
+            print("Distance between ml points: " + str(dist))
+
+        if(self.ml != self.old_ml_constraints or self.cl != self.old_cl_constraints):
+            self.old_ml_constraints = self.ml
+            self.old_cl_constraints = self.cl
+            self._benchmark_update_ml_cl_params()
+            self._benchmark_iteration()
+            self._benchmark_construct_projection_matrix()
+
+        
+        if (len(self.ml) > 0):
+            i,j = tuple(self.ml[0])
+            coord_i = (self.projection_matrix @ self.K)[:, i]
+            coord_j = (self.projection_matrix @ self.K)[:, j]
+
+            dist = cp.linalg.norm(coord_i - coord_j)
+            print("Distance between ml points: " + str(dist))
+
+        self.max_iter = 100
+
+    def _benchmark_update_ml_cl_params(self):
+        if (len(self.ml) > 0) or (len(self.cl) > 0):
+            # construct laplacian matrix and weigh it
+            self.C_ml_cml = (self.cl_ml_const_mu / (len(self.ml) + len(self.cl))) * utils.construct_ml_cl_laplacian_matrix(self.n, self.ml, self.cl)
+        else:
+            self.C_ml_cml = 0
 
     # points seems to be a dictionary of pointindices and their xy coordinates
     def update_control_points(self, points):
@@ -547,16 +591,16 @@ class ConstrainedKPCAIterative(Embedding):
         else:
             self.max_iter = 100
 
-        self._benchmark_update_params(points)
+        self._benchmark_update_cp_params(points)
         self._benchmark_iteration()
         self._benchmark_construct_projection_matrix()
 
-    def _benchmark_update_params(self, points):
+    def _benchmark_update_cp_params(self, points):
         if points is not None and set(self.control_point_indices) != set(self.old_control_point_indices):
             self.old_control_point_indices = self.control_point_indices
             self.cp_selector_m_by_n, self.cp_selector_n_by_n = utils.construct_cp_selector_matrices(self.n, self.control_point_indices)
             if(len(self.control_point_indices) > 0):
-                self.C_cp = self.K_sqrt @ (self.const_mu / len(self.control_point_indices) * self.cp_selector_n_by_n) @ self.K_sqrt
+                self.C_cp = self.K_sqrt @ (self.cp_const_mu / len(self.control_point_indices) * self.cp_selector_n_by_n) @ self.K_sqrt
             else:
                 self.C_cp = 0
 
@@ -567,7 +611,7 @@ class ConstrainedKPCAIterative(Embedding):
     def _benchmark_construct_projection_matrix(self):
         self.projection_matrix = cp.vstack((self.alpha_1, self.alpha_2))
 
-    def solve_iteratively(self, alpha, dimension, v):
+    def solve_iteratively(self, alpha, dimension, v, verbose = 0):
         
         """
         Solve the constrained optimization problem iteratively.
@@ -584,11 +628,11 @@ class ConstrainedKPCAIterative(Embedding):
         # Record start event
         # start_event.record()
 
-        C = self.C_var - self.C_cp
+        C = self.C_var - self.C_cp - self.C_ml_cml
         if alpha is not None:
             temp = self.K_sqrt @ alpha
-            temp = self.orth_mu * np.outer(temp, temp)
-            C = C - temp
+            C_orth = self.orth_mu * np.outer(temp, temp)
+            C = C - C_orth
         
 
         # Record end event
@@ -606,7 +650,7 @@ class ConstrainedKPCAIterative(Embedding):
 
         if len(self.control_point_indices) > 0:
             Y_s = self.Y[:, dimension]
-            d = -1 * self.const_mu / len(self.control_point_indices) * Y_s.T @ self.cp_selector_m_by_n @ self.K_sqrt
+            d = -1 * self.cp_const_mu / len(self.control_point_indices) * Y_s.T @ self.cp_selector_m_by_n @ self.K_sqrt
 
         # Iteration takes very roughly 1 millisecond
 
@@ -629,6 +673,9 @@ class ConstrainedKPCAIterative(Embedding):
             # Update parameters
             v_new = v + v_dw
             v_new = v_new / cp.linalg.norm(v_new)
+
+            if iteration % 100 == 0 and verbose == 1:
+                print(f"Iteration {iteration} - Norm: {cp.linalg.norm(v_new - v)}")
 
             if cp.linalg.norm(v_new - v) < 1e-6:
                 print(f"Converged after {iteration} iterations")

@@ -496,3 +496,31 @@ def construct_cp_selector_matrices(n, control_point_indices):
     n_matrix[control_point_indices, control_point_indices] = 1
 
     return m_matrix, n_matrix
+
+def construct_ml_cl_laplacian_matrix(n, ml, cl):
+    laplacian_matrix = cp.zeros((n, n))
+
+    # Fill the matrix with the values for must-link constraints
+    for ml_constraint in ml:
+        i, j = tuple(ml_constraint)
+        print("#", i, ", ", j)
+        e_i = cp.zeros(n)
+        e_i[i] = 1
+
+        e_j = cp.zeros(n)
+        e_j[j] = 1
+
+        laplacian_matrix += cp.outer(e_i - e_j, e_i - e_j)
+
+    # Fill the matrix with the values for cannot-link constraints
+    for cl_constraint in cl:
+        i, j = tuple(cl_constraint)
+        e_i = cp.zeros(n)
+        e_i[i] = 1
+
+        e_j = cp.zeros(n)
+        e_j[j] = 1
+
+        laplacian_matrix -= cp.outer(e_i - e_j, e_i - e_j)
+
+    return laplacian_matrix
