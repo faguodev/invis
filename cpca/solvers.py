@@ -802,15 +802,15 @@ class embedder(object):
     # this seems to calculate the eigendecomposition of the variance term
     def sph_cl_var_term_eig_sys(self, kernel_sys):
         n = kernel_sys[0].shape[0]
-        #H = np.identity(n) - float(1.0 / n)# * np.ones((n, n))
+        H = np.identity(n) - float(1.0 / n) * np.ones((n, n))
         # USE BLAS MATRIX MULTIPLICATION
         gemm = get_blas_funcs(["gemm"], [kernel_sys[0]])
         K2 = gemm[0](1, kernel_sys[0], kernel_sys[0])
         # K2 = kernel_sys[0].dot(kernel_sys[0])
         l = np.sum(kernel_sys[0], axis=0).reshape(-1, 1)
         L = ((1. / n) * l).dot(l.T)
-        sph_var_term = K2 - L
-        #sph_var_term = kernel_sys[1].dot(H).dot(kernel_sys[1])
+        #sph_var_term = K2 - L
+        sph_var_term = kernel_sys[1].dot(H).dot(kernel_sys[1])
         svt_eig_vals, svt_eig_vecs = np.linalg.eigh(sph_var_term)
         return (svt_eig_vals, svt_eig_vecs)
     
