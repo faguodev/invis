@@ -529,18 +529,6 @@ class ConstrainedKPCAIterative(Embedding):
     def update_must_and_cannot_link(self, ml, cl):
         self.ml = [constraint for constraint in ml if isinstance(constraint, set) and len(constraint) == 2]
         self.cl = [constraint for constraint in cl if isinstance(constraint, set) and len(constraint) == 2]
-        self.max_iter = 10 ** 100
-
-        print("ml", self.ml)
-        print("cl", self.cl)
-
-        if (len(self.ml) > 0):
-            i,j = tuple(self.ml[0])
-            coord_i = (self.projection_matrix @ self.K)[:, i]
-            coord_j = (self.projection_matrix @ self.K)[:, j]
-
-            dist = cp.linalg.norm(coord_i - coord_j)
-            print("Distance between ml points: " + str(dist))
 
         if(self.ml != self.old_ml_constraints or self.cl != self.old_cl_constraints):
             self.old_ml_constraints = self.ml
@@ -549,21 +537,11 @@ class ConstrainedKPCAIterative(Embedding):
             self._benchmark_iteration()
             self._benchmark_construct_projection_matrix()
 
-        
-        if (len(self.ml) > 0):
-            i,j = tuple(self.ml[0])
-            coord_i = (self.projection_matrix @ self.K)[:, i]
-            coord_j = (self.projection_matrix @ self.K)[:, j]
-
-            dist = cp.linalg.norm(coord_i - coord_j)
-            print("Distance between ml points: " + str(dist))
-
-        self.max_iter = 100
 
     def _benchmark_update_ml_cl_params(self):
         if (len(self.ml) > 0) or (len(self.cl) > 0):
             # construct laplacian matrix and weigh it
-            self.C_ml_cml = (self.cl_ml_const_mu / (len(self.ml) + len(self.cl))) * utils.construct_ml_cl_laplacian_matrix(self.n, self.ml, self.cl)
+            self.C_ml_cml = (self.cl_ml_const_mu / (len(self.ml) + len(self.cl))) * utils.construct_ml_cl_laplacian_matrix(self.ml, self.cl, self.S, self.num_landmarks)
         else:
             self.C_ml_cml = 0
 
