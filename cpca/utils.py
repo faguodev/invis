@@ -483,19 +483,21 @@ def construct_kernel_sys(K):
 
 # Florians code below
 
-def construct_cp_selector_matrices(n, control_point_indices):
+def construct_mn_selector_matrix(n, control_point_indices):
     # Length of the indices list
     m = len(control_point_indices)
 
-    # First matrix: m x n
     m_matrix = cp.zeros((m, n))
     m_matrix[cp.arange(m), control_point_indices] = 1
 
-    # Second matrix: n x n
+    return m_matrix
+
+def construct_nn_selector_matrix(n, control_point_indices):
+    
     n_matrix = cp.zeros((n, n))
     n_matrix[control_point_indices, control_point_indices] = 1
 
-    return m_matrix, n_matrix
+    return n_matrix
 
 def construct_ml_cl_laplacian_matrix(n, ml, cl):
     laplacian_matrix = cp.zeros((n, n))

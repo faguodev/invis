@@ -17,7 +17,9 @@ import sklearn.manifold as manifold
 import cpca.solvers as solvers
 import cpca.kernel_gen as kernel_gen
 import cpca.utils as utils
+from cpca.nystroem import Nystroem, KernelKMeansSQ
 from cupyx.profiler import benchmark
+from sklearn.metrics.pairwise import rbf_kernel, linear_kernel, polynomial_kernel
 
 class PopupSlider(QDialog):
     def __init__(self, label_text, default=4, minimum=1, maximum=20):
@@ -423,7 +425,7 @@ class ConstrainedKPCAIterative(Embedding):
         Initialize constrained Kernel PCA embedding.
 
         Args:
-            data (pd.DataFrame): Input data for the embedding.
+            data (np.ndarray): Input data for the embedding.
         """
         self.data = data
         self.control_points = []
@@ -431,10 +433,23 @@ class ConstrainedKPCAIterative(Embedding):
         self.X = None
         self.Y = None
         self.projection_matrix = cp.zeros((2, self.data.shape[0]))
+        self.verbose = True
+
+        try:
+            self.w = PopupSlider('Enter desired frame-rate (default is 30):', default=30, minimum=1, maximum=100)
+            self.w.exec_()
+            num = int(self.w.slider_value)
+            if num == '':
+                num = 30
+            self.frame_rate = num
+        except Exception as e:
+            msg = "It seems like something went wrong in the parameter selection"
+            print(e)
+            QMessageBox.about(parent, "Embedding error", msg) 
+
         
         # control points
         self.cp_selector_m_by_n = None
-        self.cp_selector_n_by_n = None
         self.old_control_point_indices = []
 
         # Must link canont link
@@ -450,85 +465,66 @@ class ConstrainedKPCAIterative(Embedding):
         self.n = len(data)
 
         try:
-            m, ok = QInputDialog.getText(parent, 'Metric', 'Enter number of the desired kernel:\n1) Gaussian (Default)\n2) Polynomial\n3) Cosine Linear\n4) Isomap\n5) Pseudoinverse of Laplacian-Kernel\n6) Pseudoinverse of Laplacian-Kernel (using k-NN)\n7) Linear')
+            m, ok = QInputDialog.getText(parent, 'Metric', 'Enter number of the desired kernel:\n1) Gaussian (Default)\n2) Polynomial\n3) Linear')
             
-            kernel = kernel_gen.gaussian_kernel()
-            params = {'sigma' : utils.median_pairwise_distances(data)}
+            sklearn_kernel_function = rbf_kernel
+
+            params = {}
 
             match m:
                 case '2':
-                    kernel = kernel_gen.polynomial_kernel()
-                    degree, ok = QInputDialog.getText(parent, 'Degree', 'Enter degree of polynomial kernel (default is 1):')
+                    sklearn_kernel_function = polynomial_kernel
+                    degree, ok = QInputDialog.getText(parent, 'Degree', 'Enter degree of polynomial kernel (default is 2):')
                     if degree == '':
-                        degree = 1
+                        degree = 2
                     params['degree'] = float(degree)
                     print("Degree: " + str(degree))
                 case '3':
-                    kernel = kernel_gen.cos_linear_kernel()
-                    params['degree'] = 1
-                case '4':
-                    kernel = kernel_gen.isomap_kernel()
-                case '5':
-                    kernel = kernel_gen.pinv_laplacian_kernel()
-                    epsilon, ok = QInputDialog.getText(parent, 'Epsilon', 'Enter epsilon for Laplacian kernel (default is 0.5):')
-                    if epsilon == '':
-                        epsilon = 0.5
-                    params['epsilon'] = float(epsilon)
-                    print("Epsilon: " + str(epsilon))
-                case '6':
-                    kernel = kernel_gen.pinv_k_nn_laplacian_kernel()
-                    k, ok = QInputDialog.getText(parent, 'Degree', 'Enter k for k-NN (default is 3):')
-                    if k == '':
-                        k = 3
-                    params['k'] = int(k)
-                    params['sigma'] = utils.median_pairwise_distances(data)
-                case '7':
-                    kernel = kernel_gen.linear_kernel()
+                    sklearn_kernel_function = linear_kernel
                 case _:
-                    kernel = kernel_gen.gaussian_kernel()
-        except:
+                    sklearn_kernel_function = rbf_kernel
+                    params = {'gamma' :  1/(2*utils.median_pairwise_distances(data[:10000])**2)}
+        except Exception as e:
             msg = "It seems like something went wrong in the parameter selection"
+            print(e)
             QMessageBox.about(parent, "Embedding error", msg) 
 
-        print("before compute kernel matrix")
+        if self.verbose:
+            print("computing landmarks")
 
-        self.K = kernel.compute_matrix(data, params)
+        kkmeanspp = KernelKMeansSQ(sklearn_kernel_function, params)
+        self.num_landmarks = 100
+        self.landmarks = kkmeanspp.select_landmarks(data, self.num_landmarks)
 
-        print("after compute kernel matrix")
+        if self.verbose:
+            print("computing kernel")
+        nystroem = Nystroem(sklearn_kernel_function, params)
 
-        self.K_sqrt, self.K_sqrt_inv = utils.construct_kernel_sys(self.K)
+        S = nystroem.transform(data, self.landmarks)
+        self.S = cp.asarray(S)
 
-        # Transfer to GPU
-        self.K = cp.asarray(self.K)
-        self.K_sqrt = cp.asarray(self.K_sqrt)
-        self.K_sqrt_inv = cp.asarray(self.K_sqrt_inv)
+        temp = self.S.T @ cp.ones((self.n, 1))
+        self.C_var = ((1/self.n) * ((self.S.T @ self.S) - ((1/self.n) * cp.outer(temp, temp))))
 
-        # compute W
-        H = cp.eye(len(self.K)) - (1 / len(self.K)) * cp.ones((len(self.K), len(self.K)))
-        self.W = (1/self.n) * H
+        v1 = cp.random.rand(self.num_landmarks)
+        self.v1 = (v1 / cp.linalg.norm(v1)).reshape(-1, 1)
 
-        v1 = cp.random.rand(self.n)
-        self.v1 = v1 / cp.linalg.norm(v1)
+        v2 = cp.random.rand(self.num_landmarks)
+        self.v2 = (v2 / cp.linalg.norm(v2)).reshape(-1, 1)
 
-        v2 = cp.random.rand(self.n)
-        self.v2 = v2 / cp.linalg.norm(v2)
-
-        self.C_var = self.K_sqrt @ self.W @ self.K_sqrt
         self.C_cp = 0
         self.C_ml_cml = 0
 
-        self.cp_const_mu = 10
+        self.cp_const_mu = 50
         self.cl_ml_const_mu = 0.1 #0.1 seems good (upper bound) choice for cl
         self.orth_mu = 10
-        
-        self.alpha_1 = None
-        self.alpha_2 = None
 
-        self.max_iter = 10 ** 100
+        self.learning_rate = 1e-1
+        self.beta1 = 0.95
 
-        print(benchmark(self.update_control_points, (points,), n_repeat=1, n_warmup=0))
+        self.finished_iterations = 0
 
-        self.max_iter = 100
+        self.update_control_points(points)
 
     def update_must_and_cannot_link(self, ml, cl):
         self.ml = [constraint for constraint in ml if isinstance(constraint, set) and len(constraint) == 2]
@@ -573,6 +569,7 @@ class ConstrainedKPCAIterative(Embedding):
 
     # points seems to be a dictionary of pointindices and their xy coordinates
     def update_control_points(self, points):
+        self.finished_iterations = 0
         self.control_points = []
         self.control_point_indices = []
         for i, coords in points.items():
@@ -580,11 +577,6 @@ class ConstrainedKPCAIterative(Embedding):
             self.control_points.append(coords)
         self.X = self.data[self.control_point_indices]
         self.Y = cp.array(self.control_points)
-        
-        if len(self.control_point_indices) == 0:
-            self.max_iter = 10 ** 100
-        else:
-            self.max_iter = 100
 
         self._benchmark_update_cp_params(points)
         self._benchmark_iteration()
@@ -593,102 +585,133 @@ class ConstrainedKPCAIterative(Embedding):
     def _benchmark_update_cp_params(self, points):
         if points is not None and set(self.control_point_indices) != set(self.old_control_point_indices):
             self.old_control_point_indices = self.control_point_indices
-            self.cp_selector_m_by_n, self.cp_selector_n_by_n = utils.construct_cp_selector_matrices(self.n, self.control_point_indices)
+            self.cp_selector_m_by_n = utils.construct_mn_selector_matrix(self.n, self.control_point_indices)
             if(len(self.control_point_indices) > 0):
-                self.C_cp = self.K_sqrt @ (self.cp_const_mu / len(self.control_point_indices) * self.cp_selector_n_by_n) @ self.K_sqrt
+                C_cp = cp.zeros((self.num_landmarks, self.num_landmarks))
+                for i in self.control_point_indices:
+                    C_cp = C_cp + np.outer(self.S[i], self.S[i])
+                self.C_cp = (self.cp_const_mu / len(self.control_point_indices)) * (C_cp)
             else:
                 self.C_cp = 0
 
     def _benchmark_iteration(self):
-        self.alpha_1, self.v1 = self.solve_iteratively(None, 0, self.v1)
-        self.alpha_2, self.v2 = self.solve_iteratively(self.alpha_1, 1, self.v2)
+        self.v1 = self.solve_iteratively(None, 0, self.v1)
+        self.v2 = self.solve_iteratively(self.v1, 1, self.v2) 
 
     def _benchmark_construct_projection_matrix(self):
-        self.projection_matrix = cp.vstack((self.alpha_1, self.alpha_2))
+        self.projection_matrix = cp.vstack((self.v1.T, self.v2.T))
 
-    def solve_iteratively(self, alpha, dimension, v, verbose = 0):
-        
+    def start_timer(self):
+        start_event = cp.cuda.Event()
+        end_event = cp.cuda.Event()
+        start_event.record()
+        return start_event, end_event
+
+    def check_elapsed_time(self, start_event, end_event, iteration):
+        end_event.record()
+        end_event.synchronize()
+        elapsed_time = cp.cuda.get_elapsed_time(start_event, end_event)
+        if elapsed_time > 1000 / (self.frame_rate * 2):
+            if self.verbose:
+                print(f"Broke off after {iteration} iterations")
+            return True
+        return False
+    
+    def adjust_learning_rate(self, v_new, v, iteration):
+        continue_flag = False
+
+        if cp.linalg.norm(v_new - v) > 1.5:
+            self.learning_rate = self.learning_rate / 2
+            if self.verbose:
+                print(f"Norm of v_new - v: {cp.linalg.norm(v_new - v)}")
+                print(f"Reducing learning rate to: {self.learning_rate}")
+            continue_flag = True
+
+        v_new = v_new / cp.linalg.norm(v_new)
+
+        if iteration % 100 == 0 and self.verbose:
+            print(f"Iteration {iteration} - {cp.linalg.norm(v_new - v)}")
+
+        if cp.linalg.norm(v_new - v) > 1.5:
+            self.learning_rate = self.learning_rate / 2
+            if self.verbose:
+                print(f"Norm of v_new (normalized) - v: {cp.linalg.norm(v_new - v)}")
+                print(f"Reducing learning rate to: {self.learning_rate}")
+            continue_flag = True
+
+        if cp.linalg.norm(v_new) < 1e-8:
+            self.learning_rate = self.learning_rate / 2
+            if self.verbose:
+                print(f"v_new is zero vector")
+                print(f"Reducing learning rate to: {self.learning_rate}")
+            continue_flag = True
+
+        return v_new, continue_flag
+
+    def solve_iteratively(self, previous_v, dimension, v):
         """
         Solve the constrained optimization problem iteratively.
 
         Args:
-            alpha (cp.ndarray): The previous alpha vector.
+            previous_v (cp.ndarray): The previous v vector.
             dimension (int): The dimension to solve for.
+            v (cp.ndarray): The v vector.
         """
 
-        # Create start event
-        # start_event = cp.cuda.Event()
-        # end_event = cp.cuda.Event()
+        start_event, end_event = self.start_timer()
+        C = self.C_var - self.C_cp- self.C_ml_cml
+        if previous_v is not None:
+            temp = self.orth_mu * cp.outer(previous_v, previous_v)
+            C = C - temp
 
-        # Record start event
-        # start_event.record()
-
-        C = self.C_var - self.C_cp - self.C_ml_cml
-        if alpha is not None:
-            temp = self.K_sqrt @ alpha
-            C_orth = self.orth_mu * np.outer(temp, temp)
-            C = C - C_orth
-        
-
-        # Record end event
-        # end_event.record()
-
-        # Wait for the end event to complete
-        # end_event.synchronize()
-
-        # Calculate elapsed time
-        # elapsed_time = cp.cuda.get_elapsed_time(start_event, end_event)
-
-        # print("Setting up marices " + str(dimension) + " " + str(elapsed_time))
-
-        d = cp.zeros(len(self.K))
+        b = cp.zeros((1,self.num_landmarks))
 
         if len(self.control_point_indices) > 0:
             Y_s = self.Y[:, dimension]
-            d = -1 * self.cp_const_mu / len(self.control_point_indices) * Y_s.T @ self.cp_selector_m_by_n @ self.K_sqrt
+            b = (-1 * self.cp_const_mu / len(self.control_point_indices) * (Y_s.T @ self.cp_selector_m_by_n @ self.S)).reshape(1, -1)
 
         # Iteration takes very roughly 1 millisecond
 
-        learning_rate = 7e-2
-        beta1 = 0.95
         iteration = 0
-        v_dw = cp.zeros(self.n)
+        v_dw = cp.zeros((self.num_landmarks, 1))
 
-        while iteration < self.max_iter:
+        while True:
+            if self.control_point_indices and self.check_elapsed_time(start_event, end_event, iteration):
+                self.finished_iterations += iteration
+                break
+
             iteration += 1
-            # Nesterov lookahead (Check Sign)
-            v_lookahead = v + beta1 * v_dw
+            
+            # Nesterov lookahead
+            v_lookahead = v + self.beta1 * v_dw
 
             # Compute gradient at lookahead position
-            dw = C @ v_lookahead - d
+            dw = C @ v_lookahead - b.T
 
             # Update velocities
-            v_dw = beta1 * v_dw + learning_rate * dw
+            v_dw = self.beta1 * v_dw + self.learning_rate * dw
 
             # Update parameters
             v_new = v + v_dw
-            v_new = v_new / cp.linalg.norm(v_new)
 
-            if iteration % 100 == 0 and verbose == 1:
-                print(f"Iteration {iteration} - Norm: {cp.linalg.norm(v_new - v)}")
+            v_new, continue_flag = self.adjust_learning_rate(v_new, v, iteration)
 
-            if cp.linalg.norm(v_new - v) < 1e-6:
-                print(f"Converged after {iteration} iterations")
+            if continue_flag:
+                v_dw = cp.zeros((self.num_landmarks, 1))
+                continue
+
+            if cp.linalg.norm(v_new - v) < 1e-9:
+                if self.verbose:
+                    print(f"Converged after {iteration} iterations")
                 break
-
+            
             v = v_new
 
-        alpha_s = self.K_sqrt_inv @ v
-        return alpha_s, v
+        return v
     
     # resposible for getting the already calculated embedding
     def get_embedding(self, X=None):
-        return cp.asnumpy(self.projection_matrix @ self.K)
-
-
-
-
-
+        return cp.asnumpy(self.projection_matrix @ self.S.T)
 
 class cPCA(Embedding):
     def __init__(self, data, points, parent):

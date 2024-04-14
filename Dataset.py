@@ -387,7 +387,7 @@ class Dataset():
             self.instance_names = list(df.iloc[:, 0].astype(str))  # assuming the first column of df holds instance names
 
             # Drop the first column, regardless of its content
-            df = df.iloc[:, 1:]  # Select all rows and start from the second column
+            df = df.iloc[:, 1:]._get_numeric_data().astype(float)  # Select all rows and start from the second column
             self.attribute_names = np.array(df.columns)  # get column names
             self.considered_attributes = np.ones(len(self.attribute_names)).astype(int).tolist()
             self.original_data = df.values  # store the DataFrame values in original_data
