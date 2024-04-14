@@ -60,11 +60,6 @@ class PopupSlider(QDialog):
         self.hide()
 
 
-
-
-
-
-
 class Embedding(object):
     def __init__(self, data, points, parent):
         self.data = data

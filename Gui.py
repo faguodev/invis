@@ -318,10 +318,10 @@ class MainWindow(QMainWindow):
         """ Create the menu in the GUI """      
         self.file_menu = self.menuBar().addMenu("&File")
         load_file        = self.prepare_menu_entry("&Load dataset", shortcut="Ctrl+L", slot=self.load_file, tip="Load a file")
-        load_session     = self.prepare_menu_entry("&Load session", slot=self.load_session)
-        save_session     = self.prepare_menu_entry("&Save session", slot=self.save_session)
-        export_matrix    = self.prepare_menu_entry("Export projection matrix", slot=self.export_projection_matrix, tip="Export the projection matrix which renders the current embedding")
-        self.add_menu_entry(self.file_menu, (load_file, load_session, save_session, None, export_matrix))
+        #load_session     = self.prepare_menu_entry("&Load session", slot=self.load_session)
+        #save_session     = self.prepare_menu_entry("&Save session", slot=self.save_session)
+        #export_matrix    = self.prepare_menu_entry("Export projection matrix", slot=self.export_projection_matrix, tip="Export the projection matrix which renders the current embedding")
+        self.add_menu_entry(self.file_menu, (load_file, None)) #load_session, save_session, export_matrix
         self.pattern_mining_menu = self.file_menu.addMenu("Export Patterns as dataset")
         frequent_menu            = self.prepare_menu_entry("Frequent patterns", slot=self.export_freq, tip="Export the TOP-1000 FREQUENT PATTERNS as a regular datafile that can be read by this tool")
         closed_menu              = self.prepare_menu_entry("Closed frequent patterns", slot=self.export_closed, tip="Export the TOP-500 CLOSED FREQUENT PATTERNS as a regular datafile that can be read by this tool")
@@ -437,10 +437,6 @@ class MainWindow(QMainWindow):
         import dill
         dill.dump(self.__dict__, open('session.pkl', "w"))
         print("Session saved")
-
-
-
-
 
     def toggle_show_itemsets_or_tree(self):
         if self.image_displayer == self.create_tag_cloud:
