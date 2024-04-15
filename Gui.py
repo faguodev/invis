@@ -358,7 +358,8 @@ class MainWindow(QMainWindow):
         kb_pca_selection    = self.prepare_menu_entry("    c-KPCA", slot=self.select_cpca, tip="constrained Knowledge Based Kernel Principal Component Analysis (Slow + Initialization can take quite long)")
         c_kpca_iterative    = self.prepare_menu_entry("    c-KPCA iterative", slot=self.select_ckpca_iterative, tip="constrained Knowledge Based Kernel Principal Component Analysis (Slow + Initialization can take quite long)")
         mle_selection       = self.prepare_menu_entry("    MLE", slot=self.select_mle, tip="Maximum Likelihood Embedding")
-        self.add_menu_entry(self.projection_algorithm, (static_label, static_xy, static_pca, static_lle, static_iso, static_mds, static_ica, static_tsne, None, interactive_label, lsp_selection, kb_pca_selection, c_kpca_iterative, mle_selection))
+        vae_selection       = self.prepare_menu_entry("    VAE", slot=self.select_vae, tip="Variational Autoencoder Embedding")
+        self.add_menu_entry(self.projection_algorithm, (static_label, static_xy, static_pca, static_lle, static_iso, static_mds, static_ica, static_tsne, None, interactive_label, lsp_selection, kb_pca_selection, c_kpca_iterative, mle_selection, vae_selection))
         
         self.view_menu = self.menuBar().addMenu("&View")
         color_scheme_label = self.prepare_menu_entry('Color schemes:', greyed_out=True)
@@ -956,6 +957,19 @@ class MainWindow(QMainWindow):
             self.embedding_algorithm = ConstrainedKPCAIterative(self.data.data, self.control_points, self)
             self.set_xy_limits()
             self.embedding_algorithm.update_must_and_cannot_link(self.must_link, self.cannot_link)
+            self.embedding_algorithm.update_control_points(self.control_points)
+            self.update()
+
+    def select_vae(self):
+        """ Selecte Variational Autoencoder as embedding algorithm """
+        if self.data != None:
+            self.auto_select_button.setIcon(QIcon(os.path.join(self.cwd,"auto_select_unavailable.png")))
+            #self.set_mc_cl_available()
+            self.setWindowTitle('InVis: ' + self.data.dataset_name + ' (VAE)')
+            self.reset_label()
+            self.embedding_algorithm = VariationalAutoencoderEmbedding(self.data.data, self.control_points, self)
+            self.set_xy_limits()
+            #self.embedding_algorithm.update_must_and_cannot_link(self.must_link, self.cannot_link)
             self.embedding_algorithm.update_control_points(self.control_points)
             self.update()
 

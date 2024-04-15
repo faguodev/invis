@@ -21,6 +21,12 @@ from cpca.nystroem import Nystroem, KernelKMeansSQ
 from cupyx.profiler import benchmark
 from sklearn.metrics.pairwise import rbf_kernel, linear_kernel, polynomial_kernel
 
+import tensorflow as tf
+from tensorflow.keras.layers import Dense, Layer
+from tensorflow.keras.losses import mse
+from tensorflow.keras import backend as K
+from tensorflow import keras
+
 class PopupSlider(QDialog):
     def __init__(self, label_text, default=4, minimum=1, maximum=20):
         QWidget.__init__(self)
@@ -879,3 +885,246 @@ class MLE(Embedding):
             self.augment_control_points(self.get_embedding().T)
             self.update_M_matrix()
             self.update_Psi_matrix()
+
+
+
+class Sampling(Layer):
+
+    def call(self, inputs):
+        z_mean, z_log_var = inputs
+        batch = tf.shape(z_mean)[0]
+        dim = tf.shape(z_mean)[1]
+        epsilon = keras.backend.random_normal(shape=(batch, dim))#, dtype='float16'
+        return z_mean + tf.exp(0.5 * z_log_var) * epsilon
+
+class Encoder(Layer):
+
+    def __init__(self, latent_dim=32, intermediate_dim=64, name="encoder", **kwargs):
+        super().__init__(name=name, **kwargs)
+        self.dense_proj1 = Dense(intermediate_dim, activation="relu")
+        self.dense_mean = Dense(latent_dim)
+        self.dense_log_var = Dense(latent_dim)
+        self.sampling = Sampling()
+
+    def call(self, inputs):
+        x = self.dense_proj1(inputs)
+        z_mean = self.dense_mean(x)
+        z_log_var = self.dense_log_var(x)
+        z = self.sampling((z_mean, z_log_var))
+        return z_mean, z_log_var, z
+    
+class Decoder(Layer):
+
+    def __init__(self, original_dim, intermediate_dim=64, name="decoder", **kwargs):
+        super().__init__(name=name, **kwargs)
+        self.dense_proj2 = Dense(intermediate_dim, activation="relu")
+        self.dense_output = Dense(original_dim, activation="sigmoid")
+
+    def call(self, inputs):
+        x = self.dense_proj2(inputs)
+        return self.dense_output(x)
+    
+class VariationalAutoEncoder(keras.Model):
+
+    def __init__(
+        self,
+        original_dim,
+        intermediate_dim=64,
+        latent_dim=32,
+        name="autoencoder",
+        **kwargs
+    ):
+        super().__init__(name=name, **kwargs)
+        self.original_dim = original_dim
+        self.encoder = Encoder(latent_dim=latent_dim, intermediate_dim=intermediate_dim)
+        self.decoder = Decoder(original_dim, intermediate_dim=intermediate_dim)
+
+    def call(self, inputs):
+        z_mean, z_log_var, z = self.encoder(inputs)
+        reconstructed = self.decoder(z)
+
+        return reconstructed, z_mean, z_log_var
+
+class VariationalAutoencoderEmbedding(Embedding):
+    def __init__(self, data: np.ndarray, points, parent):
+        if tf.test.gpu_device_name() != '/device:GPU:0':
+            print('WARNING: GPU device not found.')
+        else:
+            print('SUCCESS: Found GPU: {}'.format(tf.test.gpu_device_name()))
+
+        self.data = data
+        self.verbose = True
+        
+        try:
+            self.w = PopupSlider('Enter desired frame-rate (default is 30):', default=30, minimum=1, maximum=100)
+            self.w.exec_()
+            num = int(self.w.slider_value)
+            if num == '':
+                num = 30
+            self.frame_rate = num
+        except Exception as e:
+            msg = "It seems like something went wrong in the parameter selection"
+            print(e)
+            QMessageBox.about(parent, "Embedding error", msg) 
+
+        self.original_dim = self.data.shape[1]
+        self.intermediate_dim = self.original_dim // 2
+        self.latent_dim = 2
+        self.beta = 1
+        self.rho = 10
+
+        self.control_point_indices = []
+        self.X = None
+        self.Y = None
+
+        self.name = "vae"
+        self.is_dynamic = True 
+
+        self.model = VariationalAutoEncoder(self.original_dim, self.intermediate_dim, self.latent_dim)
+        self.optimizer = keras.optimizers.Adam()
+
+        self.is_trained = False
+        self.epochs = 20
+
+        try:
+            self.w = PopupSlider('Enter desired batch-size (default is 50):\n(Higher batchsize will make the embedding more stable, \nlower batchsize will make it adapt more readily to changes)', default=50, minimum=1, maximum=200)
+            self.w.exec_()
+            num = int(self.w.slider_value)
+            if num == '':
+                num = 50
+            self.batch_size = num
+        except Exception as e:
+            msg = "It seems like something went wrong in the parameter selection"
+            print(e)
+            QMessageBox.about(parent, "Embedding error", msg) 
+
+        self.finished_iterations = 0
+
+        self._prepare_dataset()
+
+        self.train()
+
+        #self.epochs = 1
+        self.is_trained = True
+
+    def _prepare_dataset(self):
+        control_point_indices_int = tf.cast(self.control_point_indices, tf.int32)
+        control_points = tf.gather(self.data, control_point_indices_int)
+        
+        mask = tf.logical_not(tf.reduce_any(tf.equal(tf.range(tf.shape(self.data)[0])[:, None], control_point_indices_int), -1))
+        rest_dataset = tf.boolean_mask(self.data, mask)
+
+        self.control_points = control_points
+        self.rest_dataset = rest_dataset
+
+        self.dataset = tf.data.Dataset.from_tensor_slices(self.rest_dataset)
+        self.dataset = self.dataset.batch(self.batch_size, drop_remainder=True)
+        self.dataset = self.dataset.map(lambda x: tf.concat([self.control_points, x], axis=0))
+        self.dataset = self.dataset.prefetch(tf.data.AUTOTUNE)
+
+    @tf.function
+    def train_step(self, x_batch_train, cp_indices, cp_values):
+        with tf.GradientTape() as tape:
+            (reconstructed, z_mean, z_log_var) = self.model(x_batch_train, training=True)
+
+            reconstruction_loss = mse(x_batch_train, reconstructed)
+            reconstruction_loss *= self.original_dim
+
+            kl_loss = -0.5 * K.sum(1 + z_log_var - K.square(z_mean) - K.exp(z_log_var), axis=-1)
+
+            if cp_indices is not None and cp_values is not None:
+                control_points_loss = mse(z_mean[0:len(cp_indices)], tf.cast(cp_values, dtype=tf.float32))#16
+                control_points_loss *= self.latent_dim
+                vae_loss = K.mean(reconstruction_loss + self.beta * kl_loss) + self.rho * K.mean(control_points_loss)
+            else:
+                control_points_loss = 0
+                vae_loss = K.mean(reconstruction_loss + self.beta * kl_loss)
+
+        grads = tape.gradient(vae_loss, self.model.trainable_weights)
+
+        self.optimizer.apply_gradients(zip(grads, self.model.trainable_weights))
+
+        return vae_loss
+
+    def train(self):
+
+        self.finished_iterations = 0
+        break_flag = False
+
+        start_event = cp.cuda.Event()
+        end_event = cp.cuda.Event()
+
+        # Start timer 
+        start_event.record()
+
+        for epoch in range(self.epochs):
+            if self.verbose:
+                print("\nStart of epoch %d" % (epoch,))
+
+            # Create start event
+            total_loss = 0
+            num_batches = 0
+
+            # Custom batching within the training loop
+            for x_batch_train in self.dataset:
+                loss = self.train_step(x_batch_train, self.control_point_indices, self.Y)
+                total_loss += loss
+                num_batches += 1
+                
+                # Record end event
+                end_event.record()
+
+                # Wait for the end event to complete
+                end_event.synchronize()
+                elapsed_time = cp.cuda.get_elapsed_time(start_event, end_event)
+
+                if elapsed_time > (1000 / self.frame_rate) and self.is_trained:
+                    if self.verbose:
+                        print("Broke off after %d iterations" % num_batches)
+                        print("Elapsed time: %f" % elapsed_time)
+                    break_flag = True
+                    break
+
+            if self.verbose:
+                avg_loss = total_loss / num_batches
+                print("Average loss for epoch %d: %.4f" % (epoch, avg_loss))
+
+            if self.is_trained:
+                self.finished_iterations += num_batches
+
+            if break_flag:
+                break
+
+    def update_control_points(self, points) -> None:
+        self.Y = []
+        cp_indices = []
+        for i, coords in points.items():
+            cp_indices.append(i)
+            self.Y.append(coords)
+
+        if len(self.Y) == 0:
+            self.Y = None
+        else:
+            self.Y = np.array(self.Y, dtype=np.float64)
+
+        self.X = self.data[cp_indices]
+
+        if set(self.control_point_indices) != set(cp_indices):
+            self.control_point_indices = cp_indices
+            self._prepare_dataset()
+        
+        self.train()
+
+    def get_iteration_count(self):
+        return self.finished_iterations
+
+    def get_embedding(self) -> tuple:
+        x_test = self.data
+        (_, z_mean, _) = self.model(x_test, training=False)
+        
+        x_embedding = z_mean[:, 0].numpy()
+        y_embedding = z_mean[:, 1].numpy()
+
+        embedding = np.vstack((x_embedding, y_embedding))
+
+        return embedding
