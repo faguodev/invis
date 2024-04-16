@@ -13,7 +13,19 @@ import scipy.spatial.distance as dist
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
-import cupy as cp
+try:
+    import cupy as cp
+    # Attempt to allocate memory on a GPU to confirm CUDA availability
+    try:
+        _ = cp.array([1])
+        np = cp
+        print("Using CuPy for GPU acceleration.")
+    except cp.cuda.runtime.CUDARuntimeError:
+        import numpy as cp
+        print("Failed to use GPU. Falling back to NumPy.")
+except ImportError:
+    import numpy as cp
+    print("CuPy not installed. Using NumPy.")
 import multiprocessing as mproc
 import logging
 from logging import handlers

@@ -1,7 +1,21 @@
 #!/usr/bin/python
 import numpy as np
 from copy import copy
-import cupy as cp
+try:
+    import cupy as cp
+    # Attempt to allocate memory on a GPU to confirm CUDA availability
+    try:
+        _ = cp.ones(3)
+        print(_)
+        print("Using CuPy for GPU acceleration.")
+    except Exception as e:
+        import numpy as cp
+        print("Failed to use GPU. Falling back to NumPy.")
+
+except ImportError:
+    import numpy as cp
+    print("CuPy not installed. Using NumPy.")
+
 from sklearn import decomposition
 from collections import defaultdict
 # from scipy.spatial import distance
@@ -18,7 +32,6 @@ import cpca.solvers as solvers
 import cpca.kernel_gen as kernel_gen
 import cpca.utils as utils
 from cpca.nystroem import Nystroem, KernelKMeansSQ
-from cupyx.profiler import benchmark
 from sklearn.metrics.pairwise import rbf_kernel, linear_kernel, polynomial_kernel
 
 import tensorflow as tf
@@ -642,7 +655,7 @@ class ConstrainedKPCAIterative(Embedding):
             v (cp.ndarray): The v vector.
         """
 
-        start_event, end_event = self.start_timer()
+        start_time = tf.timestamp()
         C = self.C_var - self.C_cp- self.C_ml_cml
         if previous_v is not None:
             temp = self.orth_mu * cp.outer(previous_v, previous_v)
@@ -660,7 +673,10 @@ class ConstrainedKPCAIterative(Embedding):
         v_dw = cp.zeros((self.num_landmarks, 1))
 
         while True:
-            if self.control_point_indices and self.check_elapsed_time(start_event, end_event, iteration):
+
+            current_time = tf.timestamp()
+            elapsed_time = (current_time - start_time).numpy() * 1000  # Convert to milliseconds
+            if self.control_point_indices and elapsed_time > 1000 / (self.frame_rate * 2):
                 self.finished_iterations += iteration
                 break
 
@@ -695,7 +711,10 @@ class ConstrainedKPCAIterative(Embedding):
     
     # resposible for getting the already calculated embedding
     def get_embedding(self, X=None):
-        return cp.asnumpy(self.projection_matrix @ self.S.T)
+        if(type(self.projection_matrix) == np.ndarray):
+            return self.projection_matrix @ self.S.T
+        else: 
+            return cp.asnumpy(self.projection_matrix @ self.S.T)
 
 class cPCA(Embedding):
     def __init__(self, data, points, parent):
@@ -1051,11 +1070,7 @@ class VariationalAutoencoderEmbedding(Embedding):
         self.finished_iterations = 0
         break_flag = False
 
-        start_event = cp.cuda.Event()
-        end_event = cp.cuda.Event()
-
-        # Start timer 
-        start_event.record()
+        start_time = tf.timestamp()
 
         for epoch in range(self.epochs):
             if self.verbose:
@@ -1072,11 +1087,8 @@ class VariationalAutoencoderEmbedding(Embedding):
                 num_batches += 1
                 
                 # Record end event
-                end_event.record()
-
-                # Wait for the end event to complete
-                end_event.synchronize()
-                elapsed_time = cp.cuda.get_elapsed_time(start_event, end_event)
+                current_time = tf.timestamp()
+                elapsed_time = (current_time - start_time).numpy() * 1000  # Convert to milliseconds
 
                 if elapsed_time > (1000 / self.frame_rate) and self.is_trained:
                     if self.verbose:
