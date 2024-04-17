@@ -21,7 +21,8 @@ InVis relies on a Conda environment for managing its dependencies. To set up the
 conda env create -f environment.yml
 ```
 
-**Note:** The provided installation instructions are for setting up InVis using only the CPU. Instructions for setting up InVis to utilize GPU capabilities, which were used in the experiments, will be provided soon.
+### Important Note on Installation
+The provided installation instructions are for setting up InVis using only the CPU. Instructions for setting up InVis to utilize GPU capabilities, which were used in the experiments, will be provided soon.
 
 ## Usage
 To use InVis, activate the Conda environment and start the application with the following commands:
