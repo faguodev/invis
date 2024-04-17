@@ -5,6 +5,8 @@ InVis is a tool designed for interactive data visualization. It features advance
 
 ## Installation Instructions
 
+
+
 ### Prerequisites
 To handle the datasets included in this project, Git Large File Storage (Git LFS) is required. Install Git LFS by following the instructions on the [Git LFS website](https://git-lfs.github.com/).  
 If you don't wish to install Git LFS, you can also download the datasets manually, or use your own datasets. 
@@ -18,6 +20,8 @@ InVis relies on a Conda environment for managing its dependencies. To set up the
 ```bash
 conda env create -f environment.yml
 ```
+
+**Note:** The provided installation instructions are for setting up InVis using only the CPU. Instructions for setting up InVis to utilize GPU capabilities, which were used in the experiments, will be provided soon.
 
 ## Usage
 To use InVis, activate the Conda environment and start the application with the following commands:
@@ -40,4 +44,5 @@ This software has been used in the following research papers:
 - Oglic, Dino, Paurat, Daniel, and Gärtner, Thomas, "Interactive Knowledge-Based Kernel PCA," in Proc. ECML-PKDD, Springer, 2014, pp. 501–516.
 
 ## Contact Information
-For further information, inquiries, or feedback regarding InVis, please feel free to contact us: florian.chen [at] tuwien.ac.at
+For further information, inquiries, or feedback regarding InVis, please feel free to contact us:  
+florian.chen [at] tuwien.ac.at
