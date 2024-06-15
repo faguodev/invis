@@ -1,4 +1,4 @@
-# InVis
+# InVis 2.0
 
 ## Description
 InVis is a tool designed for interactive data visualization. It features advanced interactive data embedding algorithms that allow users to dynamically adjust data embeddings by selecting and moving points within the embedding space. This flexibility facilitates a more intuitive exploration of data structures and patterns.
