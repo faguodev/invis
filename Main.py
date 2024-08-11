@@ -3,12 +3,11 @@
 #setapi('QString', 2)
 #setapi('QVariant', 2)
 
-try:
-    import gr
-    import os 
-    os.environ['MPLBACKEND'] = "module://gr.matplotlib.backend_gr"
-except:
-    print("Not using accelerated matplotlib backend")
+import logging
+import os
+
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # FATAL
+logging.getLogger('tensorflow').setLevel(logging.FATAL)
 from Gui import MainWindow
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
@@ -20,13 +19,12 @@ import numpy as np
 import matplotlib.pyplot as pl
 from Embedder import *
 from itemset_mining import ItemsetMiner
-
-
-
+import argparse
 
 class InVis(MainWindow):
     """  """
-    def __init__(self, pandasdata=''):
+    def __init__(self, pandasdata='', verbose=False):
+        self.verbose=verbose
         super(InVis, self).__init__()
         self.data = None
         self.mask = None
@@ -34,12 +32,12 @@ class InVis(MainWindow):
         self.offset = np.array([0.0, 0.0])
         self.control_points = None
         self.dummies = []
-        if len(sys.argv) > 1:
+        """ if len(sys.argv) > 1:
             try:
                 self.load_file(filename=sys.argv[1])
             except Exception as e:
                 print(e)
-                pass
+                pass """
         if type(pandasdata) == type(pd.DataFrame([])):
             """ Load a dataset from a file """
             self.show_singletons = False
@@ -279,9 +277,9 @@ class InVis(MainWindow):
 
 
 
-def start_InVis(pandasdata=None):
+def start_InVis(verbose=False, pandasdata=None):
     app = QApplication(sys.argv)
-    invis = InVis(pandasdata=pandasdata)
+    invis = InVis(pandasdata=pandasdata, verbose=verbose)
     invis.show()
     app.exec_()
     return {'selected points':invis.lassoed_points, 'embeding':invis.embedding}
@@ -289,5 +287,12 @@ def start_InVis(pandasdata=None):
 
 
 if __name__ == "__main__":
-    print("Matplotlib rendereing Backend is --" + pl.get_backend() + "--")
-    invis = start_InVis()
+    parser = argparse.ArgumentParser(description="Invis has a verbose option.")
+    parser.add_argument("--verbose", action="store_true", help="Enable verbose output")
+    
+    args = parser.parse_args()
+
+    if args.verbose:
+        print("Matplotlib rendering Backend is --" + pl.get_backend() + "--")
+
+    invis = start_InVis(args.verbose)

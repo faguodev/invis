@@ -41,8 +41,8 @@ from tensorflow.keras import backend as K
 from tensorflow import keras
 
 class PopupSlider(QDialog):
-    def __init__(self, label_text, default=4, minimum=1, maximum=20):
-        QWidget.__init__(self)
+    def __init__(self, parent=None, label_text='', default=4, minimum=1, maximum=20):
+        super().__init__(parent)  # Pass the parent to the QDialog constructor
         self.slider_value = default
 
         name_label = QLabel()
@@ -60,7 +60,6 @@ class PopupSlider(QDialog):
 
         self.button = QPushButton('Ok', self)
         self.button.clicked.connect(self.handleButton)
-        self.button.pressed.connect(self.handleButton)
 
         layout = QGridLayout(self)
         layout.addWidget(name_label      , 1, 1, 1, 4, Qt.AlignLeft)
@@ -69,16 +68,26 @@ class PopupSlider(QDialog):
         layout.addWidget(self.button     , 2, 4, 2, 4, Qt.AlignRight)
 
         self.setWindowTitle('Parameter choice')
-
+        self.setModal(True)  # Ensure the dialog is modal
 
     def slider_changed(self):
         val = self.slider.value()
-        self.value_label.setText('%d' %val)
+        self.value_label.setText('%d' % val)
         self.slider_value = val
- 
 
     def handleButton(self):
-        self.hide()
+        self.accept()  # Closes the dialog and returns a success state
+
+    def exec_(self):
+        if self.parent():
+            # Center the dialog on the parent window
+            parent_geometry = self.parent().geometry()
+            self_geometry = self.geometry()
+            x = parent_geometry.x() + (parent_geometry.width() - self_geometry.width()) // 2
+            y = parent_geometry.y() + (parent_geometry.height() - self_geometry.height()) // 2
+            self.move(x, y)
+        return super().exec_()
+
 
 
 class Embedding(object):
@@ -198,7 +207,7 @@ class LLE(Embedding):
         super(LLE, self).__init__(data, control_points, parent)
         self.name = "LLE"
         try:
-            self.w = PopupSlider('Enter number of neighbors to consider (default is 4):')
+            self.w = PopupSlider(parent, 'Enter number of neighbors to consider (default is 4):')
             self.w.exec_()
             num = int(self.w.slider_value)
             if num == '':
@@ -264,7 +273,7 @@ class ISO(Embedding):
         super(ISO, self).__init__(data, control_points, parent)
         self.name = "ISO"
         try:
-            self.w = PopupSlider('Enter number of neighbors to consider (default is 4):')
+            self.w = PopupSlider(parent, 'Enter number of neighbors to consider (default is 4):')
             self.w.exec_()
             num = int(self.w.slider_value)
             if num == '':
@@ -296,7 +305,7 @@ class tSNE(Embedding):
         super(tSNE, self).__init__(data, control_points, parent)
         self.name = "t-SNE"
         try:
-            self.w = PopupSlider('Enter perplexity (default is 30):', default=30, minimum=1, maximum=100)
+            self.w = PopupSlider(parent, 'Enter perplexity (default is 30):', default=30, minimum=1, maximum=100)
             self.w.exec_()
             num = int(self.w.slider_value)
             if num == '':
@@ -439,7 +448,7 @@ class cPCA_dummy(Embedding):
         
 class ConstrainedKPCAIterative(Embedding):
     # points here is a predefined dictionary of control points. That's why update control points is called in the init part
-    def __init__(self, data, points, parent):
+    def __init__(self, data, points, verbose, parent):
         """
         Initialize constrained Kernel PCA embedding.
 
@@ -447,15 +456,16 @@ class ConstrainedKPCAIterative(Embedding):
             data (np.ndarray): Input data for the embedding.
         """
         self.data = data
+        self.parent=parent
         self.control_points = []
         self.control_point_indices = []
         self.X = None
         self.Y = None
         self.projection_matrix = cp.zeros((2, self.data.shape[0]))
-        self.verbose = True
+        self.verbose = verbose
 
         try:
-            self.w = PopupSlider('Enter desired frame-rate (default is 30):', default=30, minimum=1, maximum=100)
+            self.w = PopupSlider(self.parent, 'Enter desired frame-rate (default is 30):', default=30, minimum=1, maximum=100)
             self.w.exec_()
             num = int(self.w.slider_value)
             if num == '':
@@ -484,7 +494,7 @@ class ConstrainedKPCAIterative(Embedding):
         self.n = len(data)
 
         try:
-            m, ok = QInputDialog.getText(parent, 'Metric', 'Enter number of the desired kernel:\n1) Gaussian (Default)\n2) Polynomial\n3) Linear')
+            m, ok = QInputDialog.getText(parent, 'Kernel choice', 'Enter number of the desired kernel:\n1) Gaussian (Default)\n2) Polynomial\n3) Linear')
             
             sklearn_kernel_function = rbf_kernel
 
@@ -515,6 +525,8 @@ class ConstrainedKPCAIterative(Embedding):
         self.num_landmarks = 100
         self.landmarks = kkmeanspp.select_landmarks(data, self.num_landmarks)
 
+        self.parent.update_status_bar("Calculating KPCA Embedding.")
+
         if self.verbose:
             print("computing kernel")
         nystroem = Nystroem(sklearn_kernel_function, params)
@@ -544,6 +556,8 @@ class ConstrainedKPCAIterative(Embedding):
         self.finished_iterations = 0
 
         self.update_control_points(points)
+
+        self.parent.update_status_bar("Iterative Constrained KPCA Embedding.")
 
     def update_must_and_cannot_link(self, ml, cl):
         self.ml = [constraint for constraint in ml if isinstance(constraint, set) and len(constraint) == 2]
@@ -748,7 +762,7 @@ class cPCA(Embedding):
         K = gk.compute_matrix(data, self.params)
         self.embedder = solvers.embedder(2.56e-16, 800, True)
         self.kernel_sys = self.embedder.kernel_sys(K)
-        self.parent.status_text.setText("Done, calculating Gaussean kernel.")
+        self.parent.update_status_bar("Done, calculating Gaussean kernel.")
 
         label_mask = np.array([0])
         self.quad_eig_sys = self.embedder.sph_cl_var_term_eig_sys(self.kernel_sys)
@@ -965,17 +979,18 @@ class VariationalAutoEncoder(keras.Model):
         return reconstructed, z_mean, z_log_var
 
 class VariationalAutoencoderEmbedding(Embedding):
-    def __init__(self, data: np.ndarray, points, parent):
+    def __init__(self, data: np.ndarray, points, verbose, parent):
         if tf.test.gpu_device_name() != '/device:GPU:0':
             print('WARNING: GPU device not found.')
         else:
             print('SUCCESS: Found GPU: {}'.format(tf.test.gpu_device_name()))
 
         self.data = data
-        self.verbose = True
+        self.verbose = verbose
+        self.parent = parent
         
         try:
-            self.w = PopupSlider('Enter desired frame-rate (default is 30):', default=30, minimum=1, maximum=100)
+            self.w = PopupSlider(self.parent, 'Enter desired frame-rate (default is 30):', default=30, minimum=1, maximum=100)
             self.w.exec_()
             num = int(self.w.slider_value)
             if num == '':
@@ -1006,7 +1021,7 @@ class VariationalAutoencoderEmbedding(Embedding):
         self.epochs = 20
 
         try:
-            self.w = PopupSlider('Enter desired batch-size (default is 50):\n(Higher batchsize will make the embedding more stable, \nlower batchsize will make it adapt more readily to changes)', default=50, minimum=1, maximum=200)
+            self.w = PopupSlider(self.parent, 'Enter desired batch-size (default is 50):\n(Higher batchsize will make the embedding more stable, \nlower batchsize will make it adapt more readily to changes)', default=50, minimum=1, maximum=200)
             self.w.exec_()
             num = int(self.w.slider_value)
             if num == '':
@@ -1019,12 +1034,16 @@ class VariationalAutoencoderEmbedding(Embedding):
 
         self.finished_iterations = 0
 
+        self.parent.update_status_bar("Calculating initial VAE Embedding.")
+
         self._prepare_dataset()
 
         self.train()
 
         #self.epochs = 1
         self.is_trained = True
+
+        self.parent.update_status_bar("Interactive VAE Embedding.")
 
     def _prepare_dataset(self):
         control_point_indices_int = tf.cast(self.control_point_indices, tf.int32)

@@ -355,8 +355,8 @@ class MainWindow(QMainWindow):
         static_tsne         = self.prepare_menu_entry("    t-SNE", shortcut=None, slot=self.select_tsne, tip="t-distributed stochastic nearest neighbor embedding")
         interactive_label   = self.prepare_menu_entry('Interactive embeddings:', greyed_out=True)
         lsp_selection       = self.prepare_menu_entry("    LSP", slot=self.select_lsp, tip="Least Squared error Projection")
-        kb_pca_selection    = self.prepare_menu_entry("    c-KPCA", slot=self.select_cpca, tip="constrained Knowledge Based Kernel Principal Component Analysis (Slow + Initialization can take quite long)")
-        c_kpca_iterative    = self.prepare_menu_entry("    c-KPCA iterative", slot=self.select_ckpca_iterative, tip="constrained Knowledge Based Kernel Principal Component Analysis (Slow + Initialization can take quite long)")
+        kb_pca_selection    = self.prepare_menu_entry("    c-KPCA", slot=self.select_cpca, tip="Constrained Knowledge Based Kernel PCA (Slow + Initialization can take quite long)")
+        c_kpca_iterative    = self.prepare_menu_entry("    c-KPCA iterative", slot=self.select_ckpca_iterative, tip="Iterative Constrained Knowledge Based Kernel PCA")
         mle_selection       = self.prepare_menu_entry("    MLE", slot=self.select_mle, tip="Maximum Likelihood Embedding")
         vae_selection       = self.prepare_menu_entry("    VAE", slot=self.select_vae, tip="Variational Autoencoder Embedding")
         self.add_menu_entry(self.projection_algorithm, (static_label, static_xy, static_pca, static_lle, static_iso, static_mds, static_ica, static_tsne, None, interactive_label, lsp_selection, kb_pca_selection, c_kpca_iterative, mle_selection, vae_selection))
@@ -457,7 +457,7 @@ class MainWindow(QMainWindow):
 
 
     def set_point_opacity(self):
-        w = PopupSlider('Set point opacity (default is 40%):', default=40, minimum=1, maximum=100)
+        w = PopupSlider(self, 'Set point opacity (default is 40%):', default=40, minimum=1, maximum=100)
         w.exec_()
         self.opacity = float(w.slider_value)/100.
         self.update()
@@ -489,7 +489,7 @@ class MainWindow(QMainWindow):
 
 
     def set_sensitivity(self):
-        self.w = PopupSlider('Set the sensitivity when picking a point (default is 5):', default=5, maximum=15)
+        self.w = PopupSlider(self, 'Set the sensitivity when picking a point (default is 5):', default=5, maximum=15)
         self.w.exec_()
         self.pick_sensitivity = int(self.w.slider_value)
 
@@ -954,7 +954,7 @@ class MainWindow(QMainWindow):
             self.set_mc_cl_available()
             self.setWindowTitle('InVis: ' + self.data.dataset_name + ' (c-KPCA iterative)')
             self.reset_label()
-            self.embedding_algorithm = ConstrainedKPCAIterative(self.data.data, self.control_points, self)
+            self.embedding_algorithm = ConstrainedKPCAIterative(self.data.data, self.control_points, self.verbose, self)
             self.set_xy_limits()
             self.embedding_algorithm.update_must_and_cannot_link(self.must_link, self.cannot_link)
             self.embedding_algorithm.update_control_points(self.control_points)
@@ -967,7 +967,7 @@ class MainWindow(QMainWindow):
             #self.set_mc_cl_available()
             self.setWindowTitle('InVis: ' + self.data.dataset_name + ' (VAE)')
             self.reset_label()
-            self.embedding_algorithm = VariationalAutoencoderEmbedding(self.data.data, self.control_points, self)
+            self.embedding_algorithm = VariationalAutoencoderEmbedding(self.data.data, self.control_points, self.verbose, self)
             self.set_xy_limits()
             #self.embedding_algorithm.update_must_and_cannot_link(self.must_link, self.cannot_link)
             self.embedding_algorithm.update_control_points(self.control_points)
