@@ -521,11 +521,11 @@ class ConstrainedKPCAIterative(Embedding):
         if self.verbose:
             print("computing landmarks")
 
+        self.parent.update_status_bar("Calculating initial KPCA Embedding.")
+
         kkmeanspp = KernelKMeansSQ(sklearn_kernel_function, params)
         self.num_landmarks = 100
         self.landmarks = kkmeanspp.select_landmarks(data, self.num_landmarks)
-
-        self.parent.update_status_bar("Calculating KPCA Embedding.")
 
         if self.verbose:
             print("computing kernel")
@@ -580,6 +580,11 @@ class ConstrainedKPCAIterative(Embedding):
 
     # points seems to be a dictionary of pointindices and their xy coordinates
     def update_control_points(self, points):
+
+        if len(points.items()) == 0:
+            self.parent.update_status_bar("Calculating initial KPCA Embedding.")
+
+
         self.finished_iterations = 0
         self.control_points = []
         self.control_point_indices = []
@@ -592,6 +597,9 @@ class ConstrainedKPCAIterative(Embedding):
         self._benchmark_update_cp_params(points)
         self._benchmark_iteration()
         self._benchmark_construct_projection_matrix()
+        
+        if len(points.items()) == 0:
+            self.parent.update_status_bar("Iterative Constrained KPCA Embedding.")
 
     def _benchmark_update_cp_params(self, points):
         if points is not None and set(self.control_point_indices) != set(self.old_control_point_indices):
@@ -746,6 +754,8 @@ class cPCA(Embedding):
         self.cl = []
         self.has_ml_cl_constraints = False
 
+        self.parent.update_status_bar("Calculating initial Constrained KPCA Embedding.")
+
         self.name = "cPCA"
         self.projection = np.zeros((2, len(data)))
         self.pca_projection = np.zeros((2, len(data)))
@@ -762,7 +772,6 @@ class cPCA(Embedding):
         K = gk.compute_matrix(data, self.params)
         self.embedder = solvers.embedder(2.56e-16, 800, True)
         self.kernel_sys = self.embedder.kernel_sys(K)
-        self.parent.update_status_bar("Done, calculating Gaussean kernel.")
 
         label_mask = np.array([0])
         self.quad_eig_sys = self.embedder.sph_cl_var_term_eig_sys(self.kernel_sys)
@@ -782,6 +791,7 @@ class cPCA(Embedding):
             pca_dirs = self.embedder.soft_cp_mode_directions(self.quad_eig_sys, self.control_point_indices, self.Y, self.kernel_sys, self.params, self.const_mu)
         self.projection_matrix = pca_dirs.T
         self.pca_projection = self.kernel_sys[0].dot(pca_dirs)
+        self.parent.update_status_bar("Constrained KPCA Embedding.")
 
 
     def get_embedding(self, X=None):
@@ -1127,6 +1137,11 @@ class VariationalAutoencoderEmbedding(Embedding):
                 break
 
     def update_control_points(self, points) -> None:
+
+
+        if len(points.items()) == 0:
+            self.parent.update_status_bar("Calculating initial VAE Embedding.")
+
         self.Y = []
         cp_indices = []
         for i, coords in points.items():
@@ -1145,6 +1160,9 @@ class VariationalAutoencoderEmbedding(Embedding):
             self._prepare_dataset()
         
         self.train()
+
+        if len(points.items()) == 0:
+            self.parent.update_status_bar("Interactive VAE Embedding.")
 
     def get_iteration_count(self):
         return self.finished_iterations

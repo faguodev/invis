@@ -704,7 +704,9 @@ class MainWindow(QMainWindow):
 
     def update_status_bar(self, message):
         """ Update the status bar at the bottom of the GUI """
-        self.statusBar().showMessage(message)
+        #self.statusBar().showMessage(message)
+        self.status_text.setText(message)
+        QApplication.processEvents()
 
 
 
