@@ -5,11 +5,16 @@ InVis is a tool designed for interactive data visualization. It features advance
 
 ## Installation Instructions
 
-
-
 ### Prerequisites
 To handle the datasets included in this project, Git Large File Storage (Git LFS) is required. Install Git LFS by following the instructions on the [Git LFS website](https://git-lfs.github.com/).  
 If you don't wish to install Git LFS, you can also download the datasets manually, or use your own datasets. 
+
+### Clone the Repository
+Clone the InVis GitHub repository:
+
+```bash
+git clone https://github.com/faguodev/invis.git
+```
 
 ### Setting Up the Environment
 InVis relies on a Conda environment for managing its dependencies. To set up the Conda environment:
@@ -21,8 +26,10 @@ InVis relies on a Conda environment for managing its dependencies. To set up the
 conda env create -f environment.yml
 ```
 
-### Important Note on Installation
-The provided installation instructions are for setting up InVis using only the CPU. Instructions for setting up InVis to utilize GPU capabilities, which were used in the experiments, will be provided soon.
+### GPU Support
+
+For most users, it is recommended to follow the installation instructions above to set up InVis to run on the CPU.  
+For optional GPU support, you can follow the detailed instructions in the [GPU Installation Guide](./gpu_installation.md).
 
 ## Usage
 To use InVis, activate the Conda environment and start the application with the following commands:
