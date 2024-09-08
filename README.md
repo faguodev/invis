@@ -26,6 +26,23 @@ InVis relies on a Conda environment for managing its dependencies. To set up the
 conda env create -f environment.yml
 ```
 
+#### Windows
+
+If you're using windows, we recommend using [WSL](https://learn.microsoft.com/en-us/windows/wsl/install) to set up the environment as above. 
+
+To install InVis on Windows natively, please use the `windows_environment.yml` file instead:
+
+```bash
+conda env create -f windows_environment.yml
+```
+
+After setting up the environment, additionally install [Tensorflow](https://www.tensorflow.org/install):
+
+```bash
+conda activate invis2
+pip install tensorflow
+```
+
 ### GPU Support
 
 For most users, it is recommended to follow the installation instructions above to set up InVis to run on the CPU.  
@@ -50,6 +67,8 @@ This software has been used in the following research papers:
 - Paurat, Daniel, and Gärtner, Thomas, "InVis: A Tool for Interactive Visual Data Analysis," in Proc. ECML-PKDD, Springer, 2013, pp. 672–676.
 
 - Oglic, Dino, Paurat, Daniel, and Gärtner, Thomas, "Interactive Knowledge-Based Kernel PCA," in Proc. ECML-PKDD, Springer, 2014, pp. 501–516.
+
+- Chen, Florian, and Gärtner, Thomas, "Scalable Interactive Data Visualization," in Proc. ECML-PKDD, Springer, 2014, pp. 429–433.
 
 ## Contact Information
 For further information, inquiries, or feedback regarding InVis, please feel free to contact us:  
