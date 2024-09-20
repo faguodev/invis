@@ -18,7 +18,6 @@ try:
     # Attempt to allocate memory on a GPU to confirm CUDA availability
     try:
         _ = cp.array([1])
-        np = cp
         print("Using CuPy for GPU acceleration.")
     except cp.cuda.runtime.CUDARuntimeError:
         import numpy as cp
