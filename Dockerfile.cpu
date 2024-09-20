@@ -1,0 +1,29 @@
+# Use Ubuntu as the base image for CPU-only environments
+FROM ubuntu:22.04 AS base
+
+# Install Python 3, pip, and other necessary dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3 python3-pip \
+    libqt5gui5 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python packages
+RUN pip3 install \
+    tensorflow-cpu==2.13.0 \
+    dill \
+    PyQt5 \
+    matplotlib \
+    scipy \
+    scikit-learn \
+    pandas \
+    unidecode \
+    statsmodels
+
+# Copy all files from the current directory to /root/invis
+COPY . /root/invis/
+
+# Set the working directory
+WORKDIR /root/invis/
+
+# Set the default command to run your application
+CMD ["python3", "Main.py", "--verbose"]
