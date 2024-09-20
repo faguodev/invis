@@ -64,11 +64,11 @@ InVis was initially developed by Daniel Paurat with algorithmic contributions fr
 ## Publications
 This software has been used in the following research papers:
 
-- Paurat, Daniel, and Gärtner, Thomas, "InVis: A Tool for Interactive Visual Data Analysis," in Proc. ECML-PKDD, Springer, 2013, pp. 672–676.
+- Chen, Florian, and Gärtner, Thomas, "Scalable Interactive Data Visualization," in Proc. ECML-PKDD, Springer, 2024, pp. 429–433.
 
 - Oglic, Dino, Paurat, Daniel, and Gärtner, Thomas, "Interactive Knowledge-Based Kernel PCA," in Proc. ECML-PKDD, Springer, 2014, pp. 501–516.
 
-- Chen, Florian, and Gärtner, Thomas, "Scalable Interactive Data Visualization," in Proc. ECML-PKDD, Springer, 2014, pp. 429–433.
+- Paurat, Daniel, and Gärtner, Thomas, "InVis: A Tool for Interactive Visual Data Analysis," in Proc. ECML-PKDD, Springer, 2013, pp. 672–676.
 
 ## Contact Information
 For further information, inquiries, or feedback regarding InVis, please feel free to contact us:  
