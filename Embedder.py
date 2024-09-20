@@ -494,25 +494,25 @@ class ConstrainedKPCAIterative(Embedding):
         self.n = len(data)
 
         try:
-            m, ok = QInputDialog.getText(parent, 'Kernel choice', 'Enter number of the desired kernel:\n1) Gaussian (Default)\n2) Polynomial\n3) Linear')
+            m, ok = QInputDialog.getText(parent, 'Kernel choice', 'Enter number of the desired kernel:\n1) Linear (Default)\n2) Gaussian\n3) Polynomial')
             
             sklearn_kernel_function = rbf_kernel
 
             params = {}
 
             match m:
-                case '2':
+                case '3':
                     sklearn_kernel_function = polynomial_kernel
                     degree, ok = QInputDialog.getText(parent, 'Degree', 'Enter degree of polynomial kernel (default is 2):')
                     if degree == '':
                         degree = 2
                     params['degree'] = float(degree)
                     print("Degree: " + str(degree))
-                case '3':
-                    sklearn_kernel_function = linear_kernel
-                case _:
+                case '2':
                     sklearn_kernel_function = rbf_kernel
                     params = {'gamma' :  1/(2*utils.median_pairwise_distances(data[:10000])**2)}
+                case _:
+                    sklearn_kernel_function = linear_kernel
         except Exception as e:
             msg = "It seems like something went wrong in the parameter selection"
             print(e)
